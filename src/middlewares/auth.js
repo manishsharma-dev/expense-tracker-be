@@ -11,7 +11,7 @@ const protect = async (req, res, next) => {
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(decoded.id).populate('country');
     if (!user || !user.isActive) return sendUnauthorized(res, 'Invalid or expired token');
     req.user = user;
     next();

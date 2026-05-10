@@ -1,5 +1,5 @@
 const { validationResult } = require('express-validator');
-const authService = require('../services/authService');
+const { register: _register, login: _login } = require('../services/authService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 
 const register = async (req, res) => {
@@ -7,7 +7,7 @@ const register = async (req, res) => {
   if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
 
   try {
-    const { user, token } = await authService.register(req.body);
+    const { user, token } = await _register(req.body);
     sendCreated(res, { user, token }, 'Registration successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
@@ -19,7 +19,7 @@ const login = async (req, res) => {
   if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
 
   try {
-    const { user, token } = await authService.login(req.body);
+    const { user, token } = await _login(req.body);
     sendSuccess(res, { user, token }, 'Login successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);

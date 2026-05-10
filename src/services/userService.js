@@ -7,7 +7,7 @@ const getAllUsers = async ({ page = 1, limit = 10, search = '' } = {}) => {
 
   const skip = (page - 1) * limit;
   const [users, total] = await Promise.all([
-    User.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }),
+    User.find(query).skip(skip).limit(limit).sort({ createdAt: -1 }).populate('country'),
     User.countDocuments(query),
   ]);
 
@@ -15,7 +15,7 @@ const getAllUsers = async ({ page = 1, limit = 10, search = '' } = {}) => {
 };
 
 const getUserById = async (id) => {
-  const user = await User.findById(id);
+  const user = await User.findById(id).populate('country');
   if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
   return user;
 };
@@ -27,7 +27,7 @@ const updateUser = async (id, updates) => {
   const user = await User.findByIdAndUpdate(id, updates, {
     new: true,
     runValidators: true,
-  });
+  }).populate('country');
   if (!user) throw Object.assign(new Error('User not found'), { statusCode: 404 });
   return user;
 };
