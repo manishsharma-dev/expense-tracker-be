@@ -10,8 +10,8 @@ const getCategoryById = async (categoryId) => {
   return category;
 }
 
-const createCategory = async ({ name, color, icon }) => {
-  const category = await ExpenditureCategory.create({ name, color, icon });
+const createCategory = async (createdBy,{ name, color, icon }) => {
+  const category = await ExpenditureCategory.create({ name, color, icon, createdBy });
   return category;
 }
 

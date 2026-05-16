@@ -15,6 +15,31 @@ const expenseSchema = new mongoose.Schema(
             ref: 'ExpenditureCategory',
             required: [true, 'Category is required'],
         },
+        subCategory: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ExpenditureSubCategory',
+        },
+        source: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'ExpenditureSource',
+            required: [true, 'Source is required'],
+        },
+        description: {
+            type: String,
+            trim: true,
+            maxlength: [200, 'Description cannot exceed 200 characters'],
+            required: [true, 'Description is required'],
+        },
+        country: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: 'Country',
+        },
+        createdBy: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: 'User',
+            required: [true, 'User is required'],
+            index: true,
+        },
     },
     { timestamps: true }
 );

@@ -6,6 +6,8 @@ router.use('/users', require('./userRoutes'));
 //protected routes
 router.use("/expenditure-category", require('./expenditureCategoryRoutes'));
 router.use("/expenditure-sub-category", require('./expenditureSubCategoryRoutes'));
+router.use("/expenditure-source", require('./expenditureSourceRoutes'));
+router.use("/expenses", require('./expenseRoutes'));
 
 // Health check
 router.get('/health', (req, res) =>
