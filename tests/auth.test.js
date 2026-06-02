@@ -13,15 +13,22 @@ describe('Auth Routes', () => {
       const res = await request(app).post('/api/v1/auth/register').send({
         name: 'Test User',
         email: 'not-an-email',
-        password: 'password123',
       });
       expect(res.statusCode).toBe(400);
     });
   });
 
-  describe('POST /api/v1/auth/login', () => {
-    it('should return 400 if credentials are missing', async () => {
-      const res = await request(app).post('/api/v1/auth/login').send({});
+  describe('POST /api/v1/auth/otp/request', () => {
+    it('should return 400 if identifier is missing', async () => {
+      const res = await request(app).post('/api/v1/auth/otp/request').send({});
+      expect(res.statusCode).toBe(400);
+      expect(res.body.success).toBe(false);
+    });
+  });
+
+  describe('POST /api/v1/auth/otp/verify', () => {
+    it('should return 400 if OTP payload is missing', async () => {
+      const res = await request(app).post('/api/v1/auth/otp/verify').send({});
       expect(res.statusCode).toBe(400);
       expect(res.body.success).toBe(false);
     });

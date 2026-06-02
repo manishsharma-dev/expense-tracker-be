@@ -21,7 +21,7 @@ const getUserById = async (id) => {
 };
 
 const updateUser = async (id, updates) => {
-  const forbidden = ['password', 'role'];
+  const forbidden = ['role'];
   forbidden.forEach((f) => delete updates[f]);
 
   const user = await User.findByIdAndUpdate(id, updates, {

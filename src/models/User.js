@@ -1,27 +1,26 @@
 const mongoose = require('mongoose');
-const bcrypt = require('bcryptjs');
 
 const userSchema = new mongoose.Schema(
   {
     name: {
       type: String,
-      required: [true, 'Name is required'],
       trim: true,
       maxlength: [100, 'Name cannot exceed 100 characters'],
     },
     email: {
       type: String,
-      required: [true, 'Email is required'],
       unique: true,
+      sparse: true,
       lowercase: true,
       trim: true,
       match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
     },
-    password: {
+    phone: {
       type: String,
-      required: [true, 'Password is required'],
-      minlength: [6, 'Password must be at least 6 characters'],
-      select: false,
+      unique: true,
+      sparse: true,
+      trim: true,
+      match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number'],
     },
     country: {
       type: mongoose.Schema.Types.ObjectId,
@@ -38,23 +37,15 @@ const userSchema = new mongoose.Schema(
   }
 );
 
-// Hash password before saving
-userSchema.pre('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+userSchema.pre('validate', function (next) {
+  if (!this.email && !this.phone) {
+    this.invalidate('email', 'Either email or phone is required');
+  }
   next();
 });
 
-// Instance method: compare password
-userSchema.methods.comparePassword = async function (candidatePassword) {
-  return bcrypt.compare(candidatePassword, this.password);
-};
-
-// Remove sensitive fields from JSON output
 userSchema.methods.toJSON = function () {
-  const obj = this.toObject();
-  delete obj.password;
-  return obj;
+  return this.toObject();
 };
 
 module.exports = mongoose.model('User', userSchema);

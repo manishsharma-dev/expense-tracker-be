@@ -1,5 +1,9 @@
 const { validationResult } = require('express-validator');
-const { register: _register, login: _login } = require('../services/authService');
+const {
+  register: _register,
+  requestOtp: _requestOtp,
+  verifyOtp: _verifyOtp,
+} = require('../services/authService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 
 const register = async (req, res) => {
@@ -7,19 +11,31 @@ const register = async (req, res) => {
   if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
 
   try {
-    const { user, token } = await _register(req.body);
-    sendCreated(res, { user, token }, 'Registration successful');
+    const { user } = await _register(req.body);
+    sendCreated(res, { user }, 'Registration successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
 };
 
-const login = async (req, res) => {
+const requestOtp = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
 
   try {
-    const { user, token } = await _login(req.body);
+    const result = await _requestOtp(req.body);
+    sendSuccess(res, result, 'OTP sent successfully');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const verifyOtp = async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
+
+  try {
+    const { user, token } = await _verifyOtp(req.body);
     sendSuccess(res, { user, token }, 'Login successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
@@ -28,4 +44,9 @@ const login = async (req, res) => {
 
 const getMe = (req, res) => sendSuccess(res, { user: req.user }, 'Profile fetched');
 
-module.exports = { register, login, getMe };
+module.exports = {
+  register,
+  requestOtp,
+  verifyOtp,
+  getMe,
+};
