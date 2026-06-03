@@ -4,6 +4,8 @@ const {
   register: _register,
   requestOtp: _requestOtp,
   verifyOtp: _verifyOtp,
+  createLoginSession: _createLoginSession,
+  logout: _logout,
 } = require('../services/authService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 
@@ -25,8 +27,18 @@ const requestOtp = async (req, res) => {
 
   try {
     const result = await _requestOtp(req.body);
-    await sendSMS(result.mobileNumber, result.otp);
-    sendSuccess(res, result, 'OTP sent successfully');
+    const { otp, ...response } = result;
+    if (result.deliveryMethod === 'phone') {
+      await sendSMS(result.recipient, otp);
+    }
+    sendSuccess(
+      res,
+      {
+        ...response,
+        ...(process.env.NODE_ENV !== 'production' && { otp }),
+      },
+      'OTP sent successfully'
+    );
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -38,7 +50,23 @@ const verifyOtp = async (req, res) => {
 
   try {
     const { user, token } = await _verifyOtp(req.body);
-    sendSuccess(res, { user, token }, 'Login successful');
+    const session = await _createLoginSession({
+      user,
+      token,
+      identifier: req.body.identifier,
+      deviceId: req.body.deviceId,
+      req,
+    });
+    sendSuccess(res, { user, token, sessionId: session._id }, 'Login successful');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const logout = async (req, res) => {
+  try {
+    await _logout({ token: req.accessToken });
+    sendSuccess(res, null, 'Logout successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -50,5 +78,6 @@ module.exports = {
   register,
   requestOtp,
   verifyOtp,
+  logout,
   getMe,
 };

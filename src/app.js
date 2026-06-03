@@ -15,6 +15,9 @@ const app = express();
 // Connect to MongoDB
 connectDB();
 
+// Trust Render/proxy headers for req.ip
+app.set('trust proxy', 1);
+
 // Security headers
 app.use(helmet());
 

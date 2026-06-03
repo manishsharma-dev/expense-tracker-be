@@ -14,6 +14,7 @@ const protect = async (req, res, next) => {
     const user = await User.findById(decoded.id).populate('country');
     if (!user || !user.isActive) return sendUnauthorized(res, 'Invalid or expired token');
     req.user = user;
+    req.accessToken = token;
     next();
   } catch {
     sendUnauthorized(res, 'Invalid or expired token');

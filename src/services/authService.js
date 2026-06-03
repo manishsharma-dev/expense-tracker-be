@@ -1,7 +1,9 @@
 const { sign } = require('jsonwebtoken');
+const crypto = require('crypto');
 const { Types } = require('mongoose');
 const User = require('../models/User');
 const Country = require('../models/Country');
+const LoginSession = require('../models/LoginSession');
 const { getRedisClient } = require('../config/redis');
 
 const OTP_TTL_SECONDS = Number(process.env.AUTH_OTP_TTL_SECONDS) || 5 * 60;
@@ -27,6 +29,15 @@ const getIdentifierType = (identifier) => {
 
 const getOtpKey = (identifier) => `auth:otp:${normalizeIdentifier(identifier)}`;
 const generateOtp = () => String(Math.floor(100000 + Math.random() * 900000));
+const hashToken = (token) => crypto.createHash('sha256').update(token).digest('hex');
+
+const getDeviceType = (userAgent = '') => {
+  const ua = userAgent.toLowerCase();
+  if (/ipad|tablet/.test(ua)) return 'tablet';
+  if (/mobi|android|iphone|ipod/.test(ua)) return 'mobile';
+  if (ua) return 'desktop';
+  return 'unknown';
+};
 
 const deriveName = ({ name, email, phone }) => {
   if (name?.trim()) return name.trim();
@@ -105,9 +116,9 @@ const requestOtp = async ({ identifier }) => {
 
   return {
     deliveryMethod: isEmail(normalizedIdentifier) ? 'email' : 'phone',
-    mobileNumber: normalizedIdentifier,
+    recipient: normalizedIdentifier,
     expiresIn: OTP_TTL_SECONDS,
-    ...(process.env.NODE_ENV !== 'production' && { otp }),
+    otp,
   };
 };
 
@@ -128,9 +139,39 @@ const verifyOtp = async ({ identifier, otp }) => {
   return { user, token };
 };
 
+const createLoginSession = async ({ user, token, identifier, req, deviceId }) => {
+  const normalizedIdentifier = normalizeIdentifier(identifier);
+  const loginMethod = isEmail(normalizedIdentifier) ? 'email_otp' : 'phone_otp';
+  const userAgent = req.get('user-agent') || '';
+
+  return LoginSession.create({
+    user: user._id,
+    loginMethod,
+    identifier: normalizedIdentifier,
+    ipAddress: req.ip,
+    userAgent,
+    deviceType: getDeviceType(userAgent),
+    deviceId: deviceId || req.get('x-device-id'),
+    accessTokenHash: hashToken(token),
+  });
+};
+
+const logout = async ({ token }) => {
+  const accessTokenHash = hashToken(token);
+  const session = await LoginSession.findOneAndUpdate(
+    { accessTokenHash, isActive: true },
+    { logoutAt: new Date(), isActive: false },
+    { new: true }
+  );
+
+  return { session };
+};
+
 module.exports = {
   register,
   requestOtp,
   verifyOtp,
+  createLoginSession,
+  logout,
   generateToken,
 };

@@ -38,6 +38,7 @@ const otpVerifyRules = [
     .isLength({ min: 4, max: 8 })
     .isNumeric()
     .withMessage('Valid OTP is required'),
+  body('deviceId').optional().trim().isLength({ max: 128 }).withMessage('Device id is too long'),
 ];
 
 module.exports = {
