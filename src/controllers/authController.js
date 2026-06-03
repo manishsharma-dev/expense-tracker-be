@@ -1,4 +1,5 @@
 const { validationResult } = require('express-validator');
+const sendSMS = require('../services/smsService');
 const {
   register: _register,
   requestOtp: _requestOtp,
@@ -24,6 +25,7 @@ const requestOtp = async (req, res) => {
 
   try {
     const result = await _requestOtp(req.body);
+    await sendSMS(result.mobileNumber, result.otp);
     sendSuccess(res, result, 'OTP sent successfully');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);

@@ -89,10 +89,7 @@ const findOrCreateUserForIdentifier = async (identifier) => {
 
   const user = await User.create({
     [identifierType]: normalizedIdentifier,
-    name: deriveName({
-      email: identifierType === 'email' ? normalizedIdentifier : undefined,
-      phone: identifierType === 'phone' ? normalizedIdentifier : undefined,
-    }),
+
   });
   return user.populate('country');
 };
@@ -104,10 +101,11 @@ const requestOtp = async ({ identifier }) => {
 
   const otp = generateOtp();
   const redis = await getRedisClient();
-  await redis.set(getOtpKey(normalizedIdentifier), otp, { EX: OTP_TTL_SECONDS });
+  await redis.set(getOtpKey(normalizedIdentifier), bcrypt.hashSync(otp, 10), { EX: OTP_TTL_SECONDS });
 
   return {
     deliveryMethod: isEmail(normalizedIdentifier) ? 'email' : 'phone',
+    mobileNumber: normalizedIdentifier,
     expiresIn: OTP_TTL_SECONDS,
     ...(process.env.NODE_ENV !== 'production' && { otp }),
   };
