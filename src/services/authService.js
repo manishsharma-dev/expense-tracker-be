@@ -101,7 +101,7 @@ const requestOtp = async ({ identifier }) => {
 
   const otp = generateOtp();
   const redis = await getRedisClient();
-  await redis.set(getOtpKey(normalizedIdentifier), bcrypt.hashSync(otp, 10), { EX: OTP_TTL_SECONDS });
+  await redis.set(getOtpKey(normalizedIdentifier), otp, { EX: OTP_TTL_SECONDS });
 
   return {
     deliveryMethod: isEmail(normalizedIdentifier) ? 'email' : 'phone',
