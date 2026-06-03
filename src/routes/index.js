@@ -7,6 +7,7 @@ router.use('/users', require('./userRoutes'));
 router.use('/categories', require('./categoryRoutes'));
 router.use('/sub-categories', require('./subCategoryRoutes'));
 router.use('/payment-methods', require('./paymentMethodRoutes'));
+router.use('/countries', require('./countryRoutes'));
 router.use("/expenses", require('./expenseRoutes'));
 
 // Health check

@@ -38,8 +38,18 @@ const createExpense = async (req, res) => {
 
 const getAllExpenses = async (req, res) => {
     try {
-        const expenses = await __getAll(req.user._id);
-        sendSuccess(res, { expenses }, 'Expenses retrieved successfully');
+        const result = await __getAll(req.user._id, {
+            page: req.query.page,
+            limit: req.query.limit,
+            search: req.query.search,
+            sortBy: req.query.sortBy,
+            sortOrder: req.query.sortOrder,
+            category: req.query.category,
+            subCategory: req.query.subCategory,
+            paymentMethod: req.query.paymentMethod,
+            country: req.query.country,
+        });
+        sendSuccess(res, result, 'Expenses retrieved successfully');
     } catch (err) {
         sendError(res, err.message, err.statusCode || 500);
     }
