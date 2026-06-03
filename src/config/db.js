@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const logger = require('../utils/logger');
+const seedExpenseReferences = require('./seedExpenseReferences');
 
 const connectDB = async () => {
   try {
@@ -7,6 +8,7 @@ const connectDB = async () => {
       serverSelectionTimeoutMS: 5000,
     });
     logger.info(`MongoDB connected: ${conn.connection.host}`);
+    await seedExpenseReferences();
   } catch (error) {
     logger.error(`MongoDB connection error: ${error.message}`);
     process.exit(1);

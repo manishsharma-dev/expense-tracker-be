@@ -12,17 +12,17 @@ const expenseSchema = new mongoose.Schema(
         },
         category: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'ExpenditureCategory',
+            ref: 'Category',
             required: [true, 'Category is required'],
         },
         subCategory: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'ExpenditureSubCategory',
+            ref: 'SubCategory',
         },
-        source: {
+        paymentMethod: {
             type: mongoose.Schema.Types.ObjectId,
-            ref: 'ExpenditureSource',
-            required: [true, 'Source is required'],
+            ref: 'PaymentMethod',
+            required: [true, 'Payment method is required'],
         },
         description: {
             type: String,
@@ -30,9 +30,35 @@ const expenseSchema = new mongoose.Schema(
             maxlength: [200, 'Description cannot exceed 200 characters'],
             required: [true, 'Description is required'],
         },
+        notes: {
+            type: String,
+            trim: true,
+            maxlength: [1000, 'Notes cannot exceed 1000 characters'],
+        },
         country: {
               type: mongoose.Schema.Types.ObjectId,
               ref: 'Country',
+        },
+        receipt: {
+            originalName: {
+                type: String,
+                trim: true,
+            },
+            fileName: {
+                type: String,
+                trim: true,
+            },
+            path: {
+                type: String,
+                trim: true,
+            },
+            mimeType: {
+                type: String,
+                trim: true,
+            },
+            size: {
+                type: Number,
+            },
         },
         createdBy: {
             type: mongoose.Schema.Types.ObjectId,

@@ -4,9 +4,9 @@ router.use('/auth', require('./authRoutes'));
 router.use('/users', require('./userRoutes'));
 
 //protected routes
-router.use("/expenditure-category", require('./expenditureCategoryRoutes'));
-router.use("/expenditure-sub-category", require('./expenditureSubCategoryRoutes'));
-router.use("/expenditure-source", require('./expenditureSourceRoutes'));
+router.use('/categories', require('./categoryRoutes'));
+router.use('/sub-categories', require('./subCategoryRoutes'));
+router.use('/payment-methods', require('./paymentMethodRoutes'));
 router.use("/expenses", require('./expenseRoutes'));
 
 // Health check
