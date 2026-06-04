@@ -1,12 +1,13 @@
-# Node + Express + MongoDB Starter
+# Expense Tracker API
 
-A production-ready REST API boilerplate with authentication, role-based access control, and clean architecture.
+Backend API for the Expense Tracker app.
 
 ## Stack
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: MongoDB + Mongoose
-- **Auth**: JWT (jsonwebtoken) + bcryptjs
+- **Auth**: OTP login + JWT
+- **Email**: Nodemailer SMTP
 - **Validation**: express-validator
 - **Logging**: Winston + Morgan
 - **Security**: Helmet, CORS, rate-limiting
@@ -38,7 +39,9 @@ npm test
 | Method | Endpoint              | Access  | Description     |
 |--------|-----------------------|---------|-----------------|
 | POST   | /api/v1/auth/register | Public  | Register user   |
-| POST   | /api/v1/auth/login    | Public  | Login           |
+| POST   | /api/v1/auth/otp/request | Public  | Request email/phone OTP |
+| POST   | /api/v1/auth/otp/verify | Public  | Verify OTP and login |
+| POST   | /api/v1/auth/logout | Private | Logout |
 | GET    | /api/v1/auth/me       | Private | Get own profile |
 
 ### Users
@@ -79,3 +82,52 @@ tests/              # Jest + Supertest tests
 | JWT_EXPIRES_IN        | JWT expiry duration            | 7d          |
 | RATE_LIMIT_WINDOW_MS  | Rate limit window (ms)         | 900000      |
 | RATE_LIMIT_MAX        | Max requests per window        | 100         |
+| AUTH_OTP_TTL_SECONDS  | OTP expiry in seconds          | 300         |
+| REDIS_URL             | Redis connection string for OTP cache | — |
+| MAIL_HOST             | SMTP host for Nodemailer       | — |
+| SMTP_PORT             | SMTP port                      | 2525         |
+| SMTP_EMAIL            | SMTP username/email            | — |
+| PASSWORD              | SMTP password or app password  | — |
+| MAIL_FROM             | From address shown in emails   | SMTP_EMAIL  |
+| MAIL_SECURE           | Use TLS from connection start  | false       |
+
+## Email OTP Setup
+
+Email OTP uses Nodemailer with SMTP:
+
+```js
+createTransport({
+  host: process.env.MAIL_HOST,
+  port: Number(process.env.SMTP_PORT),
+  secure: process.env.MAIL_SECURE === 'true',
+  auth: {
+    user: process.env.SMTP_EMAIL,
+    pass: process.env.PASSWORD
+  }
+});
+```
+
+Common provider values:
+
+| Provider | MAIL_HOST | SMTP_PORT | MAIL_SECURE | Notes |
+|----------|-----------|-----------|-------------|-------|
+| Gmail | smtp.gmail.com | 587 | false | Use a Google App Password, not your normal password |
+| Gmail SSL | smtp.gmail.com | 465 | true | Use a Google App Password |
+| Outlook / Microsoft 365 | smtp.office365.com | 587 | false | SMTP AUTH must be enabled |
+| SendGrid | smtp.sendgrid.net | 587 | false | User is `apikey`, password is your SendGrid API key |
+| Mailgun | smtp.mailgun.org | 587 | false | Use SMTP credentials from Mailgun dashboard |
+
+For Gmail:
+1. Enable 2-Step Verification on your Google account.
+2. Go to Google Account -> Security -> App passwords.
+3. Create an app password for Mail.
+4. Use:
+
+```env
+MAIL_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_EMAIL=your-email@gmail.com
+PASSWORD=your-16-character-app-password
+MAIL_FROM="Xpense <your-email@gmail.com>"
+MAIL_SECURE=false
+```
