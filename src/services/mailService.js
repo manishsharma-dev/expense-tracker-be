@@ -23,6 +23,10 @@ const getMailConfig = () => {
         host: process.env.MAIL_HOST,
         port,
         secure: process.env.MAIL_SECURE === 'true' || port === 465,
+        connectionTimeout: Number(process.env.SMTP_CONNECTION_TIMEOUT_MS) || 15000,
+        greetingTimeout: Number(process.env.SMTP_GREETING_TIMEOUT_MS) || 15000,
+        socketTimeout: Number(process.env.SMTP_SOCKET_TIMEOUT_MS) || 30000,
+        requireTLS: port === 587,
         auth: {
             user: process.env.SMTP_EMAIL,
             pass: process.env.PASSWORD,
@@ -42,7 +46,8 @@ const getFromAddress = () => {
 };
 
 const sendEmail = async (email, otp, expiresInSeconds) => {
-    const transporter = createTransport(getMailConfig());
+    const mailConfig = getMailConfig();
+    const transporter = createTransport(mailConfig);
     const minutes = Math.ceil(expiresInSeconds / 60);
     const message = {
         from: getFromAddress(),
@@ -65,7 +70,9 @@ const sendEmail = async (email, otp, expiresInSeconds) => {
             response: info.response,
         };
     } catch (error) {
-        logger.error(`OTP email send failed for ${email}: ${error.message}`);
+        logger.error(
+            `OTP email send failed for ${email}: ${error.message}. SMTP host=${mailConfig.host}, port=${mailConfig.port}, secure=${mailConfig.secure}, code=${error.code || 'n/a'}, command=${error.command || 'n/a'}`
+        );
         throw error;
     }
 }

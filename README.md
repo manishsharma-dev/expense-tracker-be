@@ -131,6 +131,11 @@ SMTP_EMAIL=your-email@gmail.com
 PASSWORD=your-16-character-app-password
 MAIL_FROM="Xpense <your-email@gmail.com>"
 MAIL_SECURE=false
+SMTP_CONNECTION_TIMEOUT_MS=15000
+SMTP_GREETING_TIMEOUT_MS=15000
+SMTP_SOCKET_TIMEOUT_MS=30000
 ```
 
 After changing these values, restart the backend server. Gmail will not work with your normal Google account password; it must be an app password.
+
+If Gmail works locally but times out on a hosted server, the host may be blocking outbound SMTP ports such as `465` and `587`. In that case, use an HTTPS email API provider or Gmail API instead of SMTP.
