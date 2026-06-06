@@ -1,6 +1,7 @@
 const { validationResult } = require('express-validator');
 const sendSMS = require('../services/smsService');
 const { sendEmail } = require('../services/mailService');
+const logger = require('../utils/logger');
 const {
   register: _register,
   requestOtp: _requestOtp,
@@ -32,7 +33,10 @@ const requestOtp = async (req, res) => {
     if (result.deliveryMethod === 'phone') {
       await sendSMS(result.recipient, otp);
     } else {
-      await sendEmail(result.recipient, otp, result.expiresIn);
+      const emailInfo = await sendEmail(result.recipient, otp, result.expiresIn);
+      logger.info(
+        `OTP email delivery requested for ${result.recipient}: messageId=${emailInfo.messageId || 'n/a'}`
+      );
     }
     sendSuccess(
       res,

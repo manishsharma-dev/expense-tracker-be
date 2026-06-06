@@ -85,7 +85,7 @@ tests/              # Jest + Supertest tests
 | AUTH_OTP_TTL_SECONDS  | OTP expiry in seconds          | 300         |
 | REDIS_URL             | Redis connection string for OTP cache | — |
 | MAIL_HOST             | SMTP host for Nodemailer       | — |
-| SMTP_PORT             | SMTP port                      | 2525         |
+| SMTP_PORT             | SMTP port                      | 587          |
 | SMTP_EMAIL            | SMTP username/email            | — |
 | PASSWORD              | SMTP password or app password  | — |
 | MAIL_FROM             | From address shown in emails   | SMTP_EMAIL  |
@@ -121,7 +121,8 @@ For Gmail:
 1. Enable 2-Step Verification on your Google account.
 2. Go to Google Account -> Security -> App passwords.
 3. Create an app password for Mail.
-4. Use:
+4. Use the generated 16-character app password in `.env`. Remove spaces from the copied app password if Google shows it grouped.
+5. Use:
 
 ```env
 MAIL_HOST=smtp.gmail.com
@@ -131,3 +132,5 @@ PASSWORD=your-16-character-app-password
 MAIL_FROM="Xpense <your-email@gmail.com>"
 MAIL_SECURE=false
 ```
+
+After changing these values, restart the backend server. Gmail will not work with your normal Google account password; it must be an app password.
