@@ -93,49 +93,15 @@ tests/              # Jest + Supertest tests
 
 ## Email OTP Setup
 
-Email OTP uses Nodemailer with SMTP:
-
-```js
-createTransport({
-  host: process.env.MAIL_HOST,
-  port: Number(process.env.SMTP_PORT),
-  secure: process.env.MAIL_SECURE === 'true',
-  auth: {
-    user: process.env.SMTP_EMAIL,
-    pass: process.env.PASSWORD
-  }
-});
-```
-
-Common provider values:
-
-| Provider | MAIL_HOST | SMTP_PORT | MAIL_SECURE | Notes |
-|----------|-----------|-----------|-------------|-------|
-| Gmail | smtp.gmail.com | 587 | false | Use a Google App Password, not your normal password |
-| Gmail SSL | smtp.gmail.com | 465 | true | Use a Google App Password |
-| Outlook / Microsoft 365 | smtp.office365.com | 587 | false | SMTP AUTH must be enabled |
-| SendGrid | smtp.sendgrid.net | 587 | false | User is `apikey`, password is your SendGrid API key |
-| Mailgun | smtp.mailgun.org | 587 | false | Use SMTP credentials from Mailgun dashboard |
-
-For Gmail:
-1. Enable 2-Step Verification on your Google account.
-2. Go to Google Account -> Security -> App passwords.
-3. Create an app password for Mail.
-4. Use the generated 16-character app password in `.env`. Remove spaces from the copied app password if Google shows it grouped.
-5. Use:
+Email OTP uses Nodemailer with SMTP. The current default setup uses Mailtrap sandbox SMTP for testing.
 
 ```env
-MAIL_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_EMAIL=your-email@gmail.com
-PASSWORD=your-16-character-app-password
-MAIL_FROM="Xpense <your-email@gmail.com>"
-MAIL_SECURE=false
-SMTP_CONNECTION_TIMEOUT_MS=15000
-SMTP_GREETING_TIMEOUT_MS=15000
-SMTP_SOCKET_TIMEOUT_MS=30000
+MAIL_HOST=sandbox.smtp.mailtrap.io
+SMTP_PORT=2525
+SMTP_EMAIL=your-mailtrap-username
+PASSWORD=your-mailtrap-password
+SMTP_FROM_NAME=NoReply
+SMTP_FROM_EMAIL=noreply@example.com
 ```
 
-After changing these values, restart the backend server. Gmail will not work with your normal Google account password; it must be an app password.
-
-If Gmail works locally but times out on a hosted server, the host may be blocking outbound SMTP ports such as `465` and `587`. In that case, use an HTTPS email API provider or Gmail API instead of SMTP.
+Mailtrap sandbox captures emails in your Mailtrap inbox. It does not deliver emails to the recipient's real inbox.
