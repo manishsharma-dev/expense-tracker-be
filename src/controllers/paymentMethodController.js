@@ -4,6 +4,8 @@ const {
   getAllPaymentMethods: _getAll,
   getPaymentMethodById: _getById,
   updatePaymentMethod: _updateById,
+  updatePaymentMethodSequence: _updateSequence,
+  deletePaymentMethod: _deleteById,
 } = require('../services/paymentMethodService');
 
 const createPaymentMethod = async (req, res) => {
@@ -42,4 +44,29 @@ const updatePaymentMethod = async (req, res) => {
   }
 };
 
-module.exports = { createPaymentMethod, getPaymentMethods, getPaymentMethodById, updatePaymentMethod };
+const updatePaymentMethodSequence = async (req, res) => {
+  try {
+    const paymentMethods = await _updateSequence(req.body.items, req.user._id);
+    sendSuccess(res, { paymentMethods }, 'Payment method order updated successfully');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const deletePaymentMethod = async (req, res) => {
+  try {
+    await _deleteById(req.params.id, req.user._id);
+    sendSuccess(res, null, 'Payment method deleted successfully');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+module.exports = {
+  createPaymentMethod,
+  getPaymentMethods,
+  getPaymentMethodById,
+  updatePaymentMethod,
+  updatePaymentMethodSequence,
+  deletePaymentMethod,
+};

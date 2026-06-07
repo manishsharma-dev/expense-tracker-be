@@ -6,6 +6,7 @@ router.use('/users', require('./userRoutes'));
 //protected routes
 router.use('/categories', require('./categoryRoutes'));
 router.use('/sub-categories', require('./subCategoryRoutes'));
+router.use('/payment-providers', require('./paymentProviderRoutes'));
 router.use('/payment-methods', require('./paymentMethodRoutes'));
 router.use('/countries', require('./countryRoutes'));
 router.use("/expenses", require('./expenseRoutes'));

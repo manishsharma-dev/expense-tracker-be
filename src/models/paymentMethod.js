@@ -10,18 +10,38 @@ const paymentMethodSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ['cash', 'card', 'upi', 'bank', 'wallet', 'other'],
+      enum: ['cash', 'card', 'debit_card', 'credit_card', 'upi', 'bank', 'wallet', 'other'],
       default: 'other',
+    },
+    provider: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'PaymentProvider',
+      index: true,
+    },
+    nickname: {
+      type: String,
+      trim: true,
+      maxlength: [255, 'Nickname cannot exceed 255 characters'],
     },
     lastFour: {
       type: String,
       trim: true,
       maxlength: [4, 'Last four cannot exceed 4 characters'],
     },
+    upiId: {
+      type: String,
+      trim: true,
+      maxlength: [100, 'UPI ID cannot exceed 100 characters'],
+    },
     icon: {
       type: String,
       trim: true,
       maxlength: [255, 'Icon cannot exceed 255 characters'],
+    },
+    sequence: {
+      type: Number,
+      default: 0,
+      index: true,
     },
     isActive: {
       type: Boolean,

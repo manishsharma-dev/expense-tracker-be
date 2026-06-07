@@ -58,6 +58,11 @@ npm test
 | GET    | /api/v1/countries                  | Auth   | List all active countries |
 | GET    | /api/v1/countries/unique-currencies | Auth  | List one country per unique currency |
 
+### Payment Providers
+| Method | Endpoint                  | Access | Description |
+|--------|---------------------------|--------|-------------|
+| GET    | /api/v1/payment-providers | Auth   | List bank/app/wallet/cash providers |
+
 ### Health
 | Method | Endpoint        | Access | Description |
 |--------|-----------------|--------|-------------|

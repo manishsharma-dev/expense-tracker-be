@@ -20,6 +20,7 @@ const getUniqueCurrencyCountries = async () =>
         countryId: { $first: '$_id' },
         name: { $first: '$name' },
         currency: { $first: '$currency' },
+        iso2: { $first: '$iso2' },
       },
     },
     {
@@ -27,6 +28,7 @@ const getUniqueCurrencyCountries = async () =>
         _id: '$countryId',
         name: 1,
         currency: 1,
+        iso2: 1,
       },
     },
     { $sort: { 'currency.code': 1, name: 1 } },
