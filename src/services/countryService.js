@@ -5,4 +5,31 @@ const getAllCountries = async () =>
     .select('name iso2 iso3 emoji currency')
     .sort({ name: 1 });
 
-module.exports = { getAllCountries };
+const getUniqueCurrencyCountries = async () =>
+  Country.aggregate([
+    {
+      $match: {
+        isActive: true,
+        'currency.code': { $exists: true, $ne: '' },
+      },
+    },
+    { $sort: { 'currency.code': 1, name: 1 } },
+    {
+      $group: {
+        _id: '$currency.code',
+        countryId: { $first: '$_id' },
+        name: { $first: '$name' },
+        currency: { $first: '$currency' },
+      },
+    },
+    {
+      $project: {
+        _id: '$countryId',
+        name: 1,
+        currency: 1,
+      },
+    },
+    { $sort: { 'currency.code': 1, name: 1 } },
+  ]);
+
+module.exports = { getAllCountries, getUniqueCurrencyCountries };

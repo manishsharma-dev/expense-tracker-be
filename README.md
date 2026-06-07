@@ -52,6 +52,12 @@ npm test
 | PATCH  | /api/v1/users/:id  | Auth   | Update user      |
 | DELETE | /api/v1/users/:id  | Admin  | Delete user      |
 
+### Countries
+| Method | Endpoint                           | Access | Description |
+|--------|------------------------------------|--------|-------------|
+| GET    | /api/v1/countries                  | Auth   | List all active countries |
+| GET    | /api/v1/countries/unique-currencies | Auth  | List one country per unique currency |
+
 ### Health
 | Method | Endpoint        | Access | Description |
 |--------|-----------------|--------|-------------|
