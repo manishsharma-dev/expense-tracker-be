@@ -10,6 +10,32 @@ const {
 } = require('../services/authService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 
+const cookieName = process.env.AUTH_COOKIE_NAME || 'access_token';
+
+const getCookieMaxAge = () => {
+  const days = Number(process.env.AUTH_COOKIE_MAX_AGE_DAYS) || 7;
+  return days * 24 * 60 * 60 * 1000;
+};
+
+const getCookieOptions = () => ({
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+  path: '/',
+  maxAge: getCookieMaxAge(),
+});
+
+const setAuthCookie = (res, token) => {
+  res.cookie(cookieName, token, getCookieOptions());
+};
+
+const clearAuthCookie = (res) => {
+  res.clearCookie(cookieName, {
+    ...getCookieOptions(),
+    maxAge: undefined,
+  });
+};
+
 const register = async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) return sendBadRequest(res, 'Validation failed', errors.array());
@@ -60,7 +86,8 @@ const verifyOtp = async (req, res) => {
       deviceId: req.body.deviceId,
       req,
     });
-    sendSuccess(res, { user, token, sessionId: session._id }, 'Login successful');
+    setAuthCookie(res, token);
+    sendSuccess(res, { user, sessionId: session._id }, 'Login successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -69,6 +96,7 @@ const verifyOtp = async (req, res) => {
 const logout = async (req, res) => {
   try {
     await _logout({ token: req.accessToken });
+    clearAuthCookie(res);
     sendSuccess(res, null, 'Logout successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);

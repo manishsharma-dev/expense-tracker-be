@@ -2,13 +2,21 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendUnauthorized, sendForbidden } = require('../utils/apiResponse');
 
+const cookieName = process.env.AUTH_COOKIE_NAME || 'access_token';
+
+const getCookieValue = (cookieHeader = '', name) => {
+  const match = cookieHeader.match(new RegExp(`(?:^|;\\s*)${name}=([^;]+)`));
+  return match?.[1] ? decodeURIComponent(match[1]) : null;
+};
+
 const protect = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
+  const cookieToken = getCookieValue(req.headers.cookie, cookieName);
+  const token = cookieToken;
+
+  if (!token) {
     return sendUnauthorized(res, 'No token provided');
   }
 
-  const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).populate('country');

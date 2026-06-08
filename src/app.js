@@ -21,8 +21,19 @@ app.set('trust proxy', 1);
 // Security headers
 app.use(helmet());
 
+const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4000,http://localhost:4200')
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 // CORS
-app.use(cors({ origin: process.env.CORS_ORIGIN || '*', credentials: true }));
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true,
+}));
 
 // Rate limiting
 app.use(

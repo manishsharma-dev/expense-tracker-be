@@ -6,7 +6,7 @@ Backend API for the Expense Tracker app.
 - **Runtime**: Node.js
 - **Framework**: Express.js
 - **Database**: MongoDB + Mongoose
-- **Auth**: OTP login + JWT
+- **Auth**: OTP login + HttpOnly JWT cookie
 - **Email**: Nodemailer SMTP
 - **Validation**: express-validator
 - **Logging**: Winston + Morgan
@@ -91,6 +91,9 @@ tests/              # Jest + Supertest tests
 | MONGODB_URI           | MongoDB connection string       | —           |
 | JWT_SECRET            | JWT signing secret             | —           |
 | JWT_EXPIRES_IN        | JWT expiry duration            | 7d          |
+| CORS_ORIGIN           | Comma-separated frontend origins allowed to send cookies | http://localhost:4000,http://localhost:4200 |
+| AUTH_COOKIE_NAME      | HttpOnly auth cookie name      | access_token |
+| AUTH_COOKIE_MAX_AGE_DAYS | Auth cookie lifetime in days | 7 |
 | RATE_LIMIT_WINDOW_MS  | Rate limit window (ms)         | 900000      |
 | RATE_LIMIT_MAX        | Max requests per window        | 100         |
 | AUTH_OTP_TTL_SECONDS  | OTP expiry in seconds          | 300         |
@@ -116,3 +119,15 @@ SMTP_FROM_EMAIL=noreply@example.com
 ```
 
 Mailtrap sandbox captures emails in your Mailtrap inbox. It does not deliver emails to the recipient's real inbox.
+
+## Cookie Auth Notes
+
+The API authenticates private routes using an HttpOnly cookie set by `/api/v1/auth/otp/verify`.
+
+For production, set `CORS_ORIGIN` to the exact deployed frontend origin, for example:
+
+```env
+CORS_ORIGIN=https://expense-tracker-fe-o0wf.onrender.com
+```
+
+Do not use `*` for `CORS_ORIGIN` with cookie authentication.
