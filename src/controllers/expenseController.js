@@ -1,6 +1,7 @@
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 const { validationResult } = require('express-validator');
 const {createExpense:_create, getAllExpenses: __getAll, getExpenseById: _getById,getExpenseByFilter: _getByFilter, updateExpense: _updateById } = require('../services/expenseService');
+const { normalizeCalendarDate } = require('../utils/dateUtils');
 
 const getReceiptPayload = (file) => {
   if (!file) return undefined;
@@ -15,7 +16,7 @@ const getReceiptPayload = (file) => {
 
 const normalizeExpensePayload = (body) => ({
   amount: body.amount !== undefined ? Number(body.amount) : undefined,
-  date: body.date,
+  date: normalizeCalendarDate(body.date),
   category: body.category,
   subCategory: body.subCategory || undefined,
   paymentMethod: body.paymentMethod,

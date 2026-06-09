@@ -1,5 +1,6 @@
 const Earning = require('../models/earning');
 const EarningCategory = require('../models/earningCategory');
+const { normalizeCalendarDate } = require('../utils/dateUtils');
 
 const defaultCategories = [
   { name: 'Salary', color: 'green', icon: 'payments' },
@@ -69,7 +70,7 @@ const createEarning = async (payload, userId) => {
   await getCategoryById(payload.category, userId);
   return Earning.create({
     amount: Number(payload.amount),
-    date: payload.date,
+    date: normalizeCalendarDate(payload.date),
     category: payload.category,
     country: payload.country,
     description: payload.description,

@@ -1,40 +1,20 @@
 const Expense = require('../models/expense');
 const Budget = require('../models/budget');
 const Earning = require('../models/earning');
+const {
+  getMonthKey,
+  getMonthLabel,
+  getMonthRange,
+  getRecentMonths,
+  getUserTimeZone,
+} = require('../utils/dateUtils');
 
-const monthKey = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-
-const normalizeMonth = (month) => {
-  if (!month) return monthKey(new Date());
+const normalizeMonth = (month, timeZone) => {
+  if (!month) return getMonthKey(new Date(), timeZone);
   if (!/^\d{4}-\d{2}$/.test(month)) {
     throw Object.assign(new Error('Month must be in YYYY-MM format'), { statusCode: 400 });
   }
   return month;
-};
-
-const getMonthRange = (month) => {
-  const [year, monthIndex] = month.split('-').map(Number);
-  const start = new Date(year, monthIndex - 1, 1);
-  const end = new Date(year, monthIndex, 1);
-  return { start, end };
-};
-
-const getMonthLabel = (month) => {
-  const [year, monthIndex] = month.split('-').map(Number);
-  return new Date(year, monthIndex - 1, 1).toLocaleString('en-US', { month: 'short' });
-};
-
-const getMonthDisplay = (month) => {
-  const [year, monthIndex] = month.split('-').map(Number);
-  return new Date(year, monthIndex - 1, 1).toLocaleString('en-US', { month: 'long', year: 'numeric' });
-};
-
-const getRecentMonths = (month, count = 6) => {
-  const [year, monthIndex] = month.split('-').map(Number);
-  return Array.from({ length: count }, (_, index) => {
-    const date = new Date(year, monthIndex - count + index, 1);
-    return monthKey(date);
-  });
 };
 
 const getChangePercent = (current, previous) => {
@@ -58,13 +38,13 @@ const getToneFromColor = (color) => {
 };
 
 const getDashboardData = async (user, options = {}) => {
-  const month = normalizeMonth(options.month);
-  const { start, end } = getMonthRange(month);
-  const previousMonthDate = new Date(start.getFullYear(), start.getMonth() - 1, 1);
-  const previousMonth = monthKey(previousMonthDate);
-  const previousRange = getMonthRange(previousMonth);
+  const timeZone = getUserTimeZone(user);
+  const month = normalizeMonth(options.month, timeZone);
+  const { start, end } = getMonthRange(month, timeZone);
+  const previousMonth = getRecentMonths(month, 2)[0];
+  const previousRange = getMonthRange(previousMonth, timeZone);
   const recentMonths = getRecentMonths(month);
-  const sixMonthRange = getMonthRange(recentMonths[0]);
+  const sixMonthRange = getMonthRange(recentMonths[0], timeZone);
 
   const [currentExpenses, currentEarnings, previousExpenses, sixMonthExpenses, recentExpenses, budget] = await Promise.all([
     Expense.find({ createdBy: user._id, date: { $gte: start, $lt: end } }).populate('category'),
@@ -89,7 +69,7 @@ const getDashboardData = async (user, options = {}) => {
 
   const monthlySpendByMonth = new Map(recentMonths.map((item) => [item, 0]));
   sixMonthExpenses.forEach((expense) => {
-    const key = monthKey(expense.date);
+    const key = getMonthKey(expense.date, timeZone);
     if (monthlySpendByMonth.has(key)) {
       monthlySpendByMonth.set(key, monthlySpendByMonth.get(key) + expense.amount);
     }
@@ -119,7 +99,7 @@ const getDashboardData = async (user, options = {}) => {
       name: user.name || user.email?.split('@')[0] || user.phone || 'there',
     },
     month,
-    monthLabel: getMonthDisplay(month),
+    monthLabel: getMonthLabel(month, { month: 'long', year: 'numeric' }),
     currencyCode: user.country?.currency?.code || 'INR',
     summary: {
       totalSpent,
@@ -137,7 +117,7 @@ const getDashboardData = async (user, options = {}) => {
       } : null,
     },
     monthlySpend: recentMonths.map((item) => ({
-      month: getMonthLabel(item),
+      month: getMonthLabel(item, { month: 'short' }),
       value: monthlySpendByMonth.get(item) ?? 0,
     })),
     categorySpend: categorySpend.map((category) => ({
