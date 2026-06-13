@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const connectDB = require('./config/db');
 const routes = require('./routes');
 const { notFound, errorHandler } = require('./middlewares/errorHandler');
+const { csrfProtection } = require('./middlewares/csrfProtection');
 const logger = require('./utils/logger');
 
 const app = express();
@@ -66,8 +67,17 @@ app.use(express.urlencoded({ extended: true }));
 // HTTP request logging
 app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
+const csrfExemptPaths = new Set([
+  '/auth/register',
+  '/auth/otp/request',
+  '/auth/otp/verify',
+]);
+
 // API routes
-app.use('/api/v1', routes);
+app.use('/api/v1', (req, res, next) => {
+  if (csrfExemptPaths.has(req.path)) return next();
+  return csrfProtection(req, res, next);
+}, routes);
 
 // 404 & global error handler
 app.use(notFound);

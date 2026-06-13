@@ -94,6 +94,7 @@ tests/              # Jest + Supertest tests
 | CORS_ORIGIN           | Comma-separated frontend origins allowed to send cookies | http://localhost:4000,http://localhost:4200 |
 | AUTH_COOKIE_NAME      | HttpOnly auth cookie name      | access_token |
 | AUTH_COOKIE_MAX_AGE_DAYS | Auth cookie lifetime in days | 7 |
+| CSRF_COOKIE_NAME      | HttpOnly CSRF cookie name used for write request protection | csrf_token |
 | RATE_LIMIT_WINDOW_MS  | Rate limit window (ms)         | 900000      |
 | RATE_LIMIT_MAX        | Max requests per window        | 100         |
 | AUTH_OTP_TTL_SECONDS  | OTP expiry in seconds          | 300         |
@@ -131,3 +132,5 @@ CORS_ORIGIN=https://expense-tracker-fe-o0wf.onrender.com
 ```
 
 Do not use `*` for `CORS_ORIGIN` with cookie authentication.
+
+Unsafe authenticated requests (`POST`, `PUT`, `PATCH`, `DELETE`) also require a CSRF token. The frontend gets this from `/api/v1/auth/csrf-token` and sends it back in the `X-CSRF-Token` header.
