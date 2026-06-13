@@ -85,6 +85,7 @@ MAIL_HOST=smtp-relay.brevo.com
 SMTP_PORT=587
 SMTP_EMAIL=your-brevo-smtp-login
 SMTP_PASSWORD=your-brevo-smtp-key
+BREVO_API_KEY=your-brevo-api-key
 MAIL_SECURE=false
 SMTP_FROM_NAME=Xpense
 SMTP_FROM_EMAIL=verified-sender@example.com
@@ -98,6 +99,39 @@ AWS_S3_PUBLIC_BASE_URL=
 ```
 
 ## Brevo Email Setup
+
+For Render, prefer Brevo's HTTPS API because SMTP port `587` can time out on hosted environments.
+
+1. In Brevo, open `SMTP & API`.
+2. Go to `API keys`.
+3. Generate an API key and put the full value in `BREVO_API_KEY`.
+4. Go to the `SMTP` tab only if you also want local SMTP fallback.
+5. Copy the SMTP login into `SMTP_EMAIL`.
+6. Generate an SMTP key and put the full value in `SMTP_PASSWORD`.
+7. Verify a sender email in Brevo.
+8. Use that verified sender as `SMTP_FROM_EMAIL`.
+
+Recommended Render values:
+
+```env
+BREVO_API_KEY=your-brevo-api-key
+SMTP_FROM_NAME=Xpense
+SMTP_FROM_EMAIL=verified-sender@example.com
+```
+
+Optional SMTP fallback values:
+
+```env
+MAIL_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+MAIL_SECURE=false
+SMTP_EMAIL=your-brevo-smtp-login
+SMTP_PASSWORD=your-brevo-smtp-key
+```
+
+`BREVO_API_KEY` is preferred by the code when present. SMTP is used only when `BREVO_API_KEY` is not set.
+
+Legacy SMTP setup:
 
 1. In Brevo, open `SMTP & API`.
 2. Go to the `SMTP` tab.

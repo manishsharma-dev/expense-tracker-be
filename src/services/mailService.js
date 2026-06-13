@@ -4,6 +4,7 @@ const logger = require('../utils/logger');
 let transporter;
 
 const getEnv = (key) => process.env[key]?.trim();
+const brevoApiUrl = 'https://api.brevo.com/v3/smtp/email';
 
 const getTransporter = () => {
     if (transporter) return transporter;
@@ -35,23 +36,36 @@ const getFromAddress = () => {
     return `${fromName} <${fromEmail}>`;
 };
 
+const getSender = () => ({
+    name: getEnv('SMTP_FROM_NAME') || 'Xpense',
+    email: getEnv('SMTP_FROM_EMAIL') || getEnv('SMTP_EMAIL'),
+});
+
 const getRecipientDomain = (email) => email?.split('@')[1] || 'unknown';
 
 const sendEmail = async (email, otp, expiresInSeconds) => {
     const minutes = Math.ceil(expiresInSeconds / 60);
+    const textContent = `Your Xpense login OTP is ${otp}. It expires in ${minutes} minute${minutes === 1 ? '' : 's'}.`;
+    const htmlContent = `
+        <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
+            <h2 style="margin: 0 0 12px;">Your Xpense login OTP</h2>
+            <p style="margin: 0 0 16px;">Use this OTP to continue logging in:</p>
+            <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 0 0 16px;">${otp}</p>
+            <p style="margin: 0;">This OTP expires in ${minutes} minute${minutes === 1 ? '' : 's'}.</p>
+        </div>
+    `;
+
+    if (getEnv('BREVO_API_KEY')) {
+        await sendEmailViaBrevoApi(email, textContent, htmlContent);
+        return;
+    }
+
     const message = {
         from: getFromAddress(),
         to: email,
         subject: 'Your Xpense login OTP',
-        text: `Your Xpense login OTP is ${otp}. It expires in ${minutes} minute${minutes === 1 ? '' : 's'}.`,
-        html: `
-            <div style="font-family: Arial, sans-serif; line-height: 1.5; color: #111827;">
-                <h2 style="margin: 0 0 12px;">Your Xpense login OTP</h2>
-                <p style="margin: 0 0 16px;">Use this OTP to continue logging in:</p>
-                <p style="font-size: 28px; font-weight: 700; letter-spacing: 4px; margin: 0 0 16px;">${otp}</p>
-                <p style="margin: 0;">This OTP expires in ${minutes} minute${minutes === 1 ? '' : 's'}.</p>
-            </div>
-        `,
+        text: textContent,
+        html: htmlContent,
     }
 
     try {
@@ -62,5 +76,36 @@ const sendEmail = async (email, otp, expiresInSeconds) => {
         throw err;
     }
 }
+
+const sendEmailViaBrevoApi = async (email, textContent, htmlContent) => {
+    const sender = getSender();
+    if (!sender.email) {
+        throw Object.assign(new Error('Email sender is not configured'), { statusCode: 500 });
+    }
+
+    const response = await fetch(brevoApiUrl, {
+        method: 'POST',
+        headers: {
+            accept: 'application/json',
+            'api-key': getEnv('BREVO_API_KEY'),
+            'content-type': 'application/json',
+        },
+        body: JSON.stringify({
+            sender,
+            to: [{ email }],
+            subject: 'Your Xpense login OTP',
+            textContent,
+            htmlContent,
+        }),
+    });
+
+    if (!response.ok) {
+        const errorText = await response.text();
+        logger.error(`OTP email send failed via Brevo API: status=${response.status} from=${sender.email} toDomain=${getRecipientDomain(email)} response=${errorText}`);
+        throw Object.assign(new Error('Could not send OTP email'), { statusCode: 500 });
+    }
+
+    logger.info(`OTP email sent via Brevo API to domain=${getRecipientDomain(email)}`);
+};
 
 module.exports = { sendEmail };
