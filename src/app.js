@@ -40,6 +40,13 @@ const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4000,http:/
 
 logger.info(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 
+const getClientIp = (req) => {
+  const forwardedFor = `${req.headers['x-forwarded-for'] || ''}`
+    .split(',')[0]
+    .trim();
+  return forwardedFor || req.ip;
+};
+
 // CORS
 app.use(cors({
   origin(origin, callback) {
@@ -56,6 +63,7 @@ app.use(
   rateLimit({
     windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
     max: Number(process.env.RATE_LIMIT_MAX) || 100,
+    keyGenerator: (req) => getClientIp(req),
     message: { success: false, message: 'Too many requests, please try again later.' },
   })
 );
