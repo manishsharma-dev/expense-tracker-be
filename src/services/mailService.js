@@ -1,4 +1,5 @@
 const { createTransport } = require('nodemailer');
+const logger = require('../utils/logger');
 
 let transporter;
 
@@ -34,6 +35,8 @@ const getFromAddress = () => {
     return `${fromName} <${fromEmail}>`;
 };
 
+const getRecipientDomain = (email) => email?.split('@')[1] || 'unknown';
+
 const sendEmail = async (email, otp, expiresInSeconds) => {
     const minutes = Math.ceil(expiresInSeconds / 60);
     const message = {
@@ -51,7 +54,13 @@ const sendEmail = async (email, otp, expiresInSeconds) => {
         `,
     }
 
-    await getTransporter().sendMail(message);
+    try {
+        await getTransporter().sendMail(message);
+        logger.info(`OTP email sent via SMTP to domain=${getRecipientDomain(email)}`);
+    } catch (err) {
+        logger.error(`OTP email send failed via SMTP: host=${getEnv('MAIL_HOST') || 'smtp-relay.brevo.com'} port=${getEnv('SMTP_PORT') || '587'} from=${getEnv('SMTP_FROM_EMAIL') || getEnv('SMTP_EMAIL')} toDomain=${getRecipientDomain(email)} code=${err.code || 'unknown'} command=${err.command || 'unknown'} responseCode=${err.responseCode || 'unknown'} response=${err.response || err.message}`);
+        throw err;
+    }
 }
 
 module.exports = { sendEmail };

@@ -45,7 +45,10 @@ const register = async (req, res) => {
     const { user } = await _register(req.body);
     sendCreated(res, { user }, 'Registration successful');
   } catch (err) {
-    sendError(res, err.message, err.statusCode || 500);
+    const message = process.env.NODE_ENV === 'production' && err.code === 'EAUTH'
+      ? 'Could not send OTP email'
+      : err.message;
+    sendError(res, message, err.statusCode || 500);
   }
 };
 
