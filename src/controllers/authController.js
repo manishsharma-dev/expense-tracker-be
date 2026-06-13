@@ -9,6 +9,7 @@ const {
   logout: _logout,
 } = require('../services/authService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
+const { clearCsrfCookie, createCsrfToken, setCsrfCookie } = require('../utils/csrf');
 
 const cookieName = process.env.AUTH_COOKIE_NAME || 'access_token';
 
@@ -87,16 +88,25 @@ const verifyOtp = async (req, res) => {
       req,
     });
     setAuthCookie(res, token);
-    sendSuccess(res, { user, sessionId: session._id }, 'Login successful');
+    const csrfToken = createCsrfToken();
+    setCsrfCookie(res, csrfToken);
+    sendSuccess(res, { user, sessionId: session._id, csrfToken }, 'Login successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
+};
+
+const getCsrfToken = (_req, res) => {
+  const csrfToken = createCsrfToken();
+  setCsrfCookie(res, csrfToken);
+  sendSuccess(res, { csrfToken }, 'CSRF token issued');
 };
 
 const logout = async (req, res) => {
   try {
     await _logout({ token: req.accessToken });
     clearAuthCookie(res);
+    clearCsrfCookie(res);
     sendSuccess(res, null, 'Logout successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
@@ -109,6 +119,7 @@ module.exports = {
   register,
   requestOtp,
   verifyOtp,
+  getCsrfToken,
   logout,
   getMe,
 };

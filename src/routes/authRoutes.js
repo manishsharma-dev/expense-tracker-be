@@ -10,6 +10,7 @@ const {
 router.post('/register', registerRules, authController.register);
 router.post('/otp/request', otpRequestRules, authController.requestOtp);
 router.post('/otp/verify', otpVerifyRules, authController.verifyOtp);
+router.get('/csrf-token', protect, authController.getCsrfToken);
 router.post('/logout', protect, authController.logout);
 router.get('/me', protect, authController.getMe);
 

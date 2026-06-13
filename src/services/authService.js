@@ -174,4 +174,5 @@ module.exports = {
   createLoginSession,
   logout,
   generateToken,
+  hashToken,
 };
