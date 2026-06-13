@@ -1,136 +1,163 @@
-# Expense Tracker API
+# Xpense Backend
 
-Backend API for the Expense Tracker app.
+Backend API for the Xpense expense tracker.
 
 ## Stack
-- **Runtime**: Node.js
-- **Framework**: Express.js
-- **Database**: MongoDB + Mongoose
-- **Auth**: OTP login + HttpOnly JWT cookie
-- **Email**: Nodemailer SMTP
-- **Validation**: express-validator
-- **Logging**: Winston + Morgan
-- **Security**: Helmet, CORS, rate-limiting
-- **Testing**: Jest + Supertest
 
-## Getting Started
+- Node.js + Express
+- MongoDB + Mongoose
+- OTP login with HttpOnly JWT cookie
+- Redis OTP cache
+- Nodemailer SMTP with Brevo
+- S3 receipt storage
+- Helmet, CORS, CSRF protection, rate limiting
+- Jest + Supertest
+
+## Local Development
 
 ```bash
-# Install dependencies
 npm install
-
-# Set up environment
 cp .env.example .env
-# Edit .env with your values
-
-# Run in development
 npm run dev
-
-# Run in production
-npm start
-
-# Run tests
-npm test
 ```
 
-## API Endpoints
+Health check:
+
+```text
+GET /api/v1/health
+```
+
+## Key Endpoints
 
 ### Auth
-| Method | Endpoint              | Access  | Description     |
-|--------|-----------------------|---------|-----------------|
-| POST   | /api/v1/auth/register | Public  | Register user   |
-| POST   | /api/v1/auth/otp/request | Public  | Request email/phone OTP |
-| POST   | /api/v1/auth/otp/verify | Public  | Verify OTP and login |
-| POST   | /api/v1/auth/logout | Private | Logout |
-| GET    | /api/v1/auth/me       | Private | Get own profile |
 
-### Users
-| Method | Endpoint           | Access | Description      |
-|--------|--------------------|--------|------------------|
-| GET    | /api/v1/users      | Admin  | List all users   |
-| GET    | /api/v1/users/:id  | Auth   | Get user by ID   |
-| PATCH  | /api/v1/users/:id  | Auth   | Update user      |
-| DELETE | /api/v1/users/:id  | Admin  | Delete user      |
+| Method | Endpoint | Access | Description |
+| --- | --- | --- | --- |
+| POST | `/api/v1/auth/register` | Public | Register user |
+| POST | `/api/v1/auth/otp/request` | Public | Request email or phone OTP |
+| POST | `/api/v1/auth/otp/verify` | Public | Verify OTP and set auth cookie |
+| GET | `/api/v1/auth/csrf-token` | Private | Issue CSRF token |
+| GET | `/api/v1/auth/me` | Private | Get current user |
+| POST | `/api/v1/auth/logout` | Private | Logout and clear cookies |
 
-### Countries
-| Method | Endpoint                           | Access | Description |
-|--------|------------------------------------|--------|-------------|
-| GET    | /api/v1/countries                  | Auth   | List all active countries |
-| GET    | /api/v1/countries/unique-currencies | Auth  | List one country per unique currency |
+### App
 
-### Payment Providers
-| Method | Endpoint                  | Access | Description |
-|--------|---------------------------|--------|-------------|
-| GET    | /api/v1/payment-providers | Auth   | List bank/app/wallet/cash providers |
-
-### Health
-| Method | Endpoint        | Access | Description |
-|--------|-----------------|--------|-------------|
-| GET    | /api/v1/health  | Public | Health check |
-
-## Folder Structure
-
-```
-src/
-├── config/         # DB connection and env config
-├── controllers/    # Route handlers (thin layer)
-├── middlewares/    # Auth, validation, error handling
-├── models/         # Mongoose schemas
-├── routes/         # Express routers
-├── services/       # Business logic
-└── utils/          # Logger, API response helpers
-tests/              # Jest + Supertest tests
-```
+| Method | Endpoint | Access | Description |
+| --- | --- | --- | --- |
+| GET | `/api/v1/dashboard` | Private | Dashboard summary |
+| GET/POST | `/api/v1/expenses` | Private | List or create expenses |
+| GET/PUT | `/api/v1/expenses/:id` | Private | Read or update one expense |
+| GET | `/api/v1/expenses/:id/receipt` | Private | Stream receipt from S3 |
+| GET/POST | `/api/v1/earnings` | Private | List or create earnings |
+| GET/PUT | `/api/v1/budgets` | Private | Read or update budget |
+| GET/POST | `/api/v1/categories` | Private | Expense categories |
+| GET/POST | `/api/v1/sub-categories` | Private | Expense sub categories |
+| GET/POST | `/api/v1/payment-methods` | Private | User payment methods |
+| GET | `/api/v1/payment-providers` | Private | Common providers |
+| GET | `/api/v1/countries` | Private | Countries |
+| GET | `/api/v1/countries/unique-currencies` | Private | Unique currency list |
 
 ## Environment Variables
 
-| Variable              | Description                    | Default     |
-|-----------------------|--------------------------------|-------------|
-| NODE_ENV              | Environment                    | development |
-| PORT                  | Server port                    | 3000        |
-| MONGODB_URI           | MongoDB connection string       | —           |
-| JWT_SECRET            | JWT signing secret             | —           |
-| JWT_EXPIRES_IN        | JWT expiry duration            | 7d          |
-| CORS_ORIGIN           | Comma-separated frontend origins allowed to send cookies | http://localhost:4000,http://localhost:4200 |
-| AUTH_COOKIE_NAME      | HttpOnly auth cookie name      | access_token |
-| AUTH_COOKIE_MAX_AGE_DAYS | Auth cookie lifetime in days | 7 |
-| CSRF_COOKIE_NAME      | HttpOnly CSRF cookie name used for write request protection | csrf_token |
-| RATE_LIMIT_WINDOW_MS  | Rate limit window (ms)         | 900000      |
-| RATE_LIMIT_MAX        | Max requests per window        | 100         |
-| AUTH_OTP_TTL_SECONDS  | OTP expiry in seconds          | 300         |
-| REDIS_URL             | Redis connection string for OTP cache | — |
-| MAIL_HOST             | SMTP host for Nodemailer       | — |
-| SMTP_PORT             | SMTP port                      | 587          |
-| SMTP_EMAIL            | SMTP username/email            | — |
-| PASSWORD              | SMTP password or app password  | — |
-| MAIL_FROM             | From address shown in emails   | SMTP_EMAIL  |
-| MAIL_SECURE           | Use TLS from connection start  | false       |
-
-## Email OTP Setup
-
-Email OTP uses Nodemailer with SMTP. The current default setup uses Mailtrap sandbox SMTP for testing.
-
 ```env
-MAIL_HOST=sandbox.smtp.mailtrap.io
-SMTP_PORT=2525
-SMTP_EMAIL=your-mailtrap-username
-PASSWORD=your-mailtrap-password
-SMTP_FROM_NAME=NoReply
-SMTP_FROM_EMAIL=noreply@example.com
+NODE_ENV=development
+PORT=3000
+MONGODB_URI=
+JWT_SECRET=
+JWT_EXPIRES_IN=7d
+
+CORS_ORIGIN=http://localhost:4200,https://expense-tracker-fe-o0wf.onrender.com
+AUTH_COOKIE_NAME=access_token
+AUTH_COOKIE_MAX_AGE_DAYS=7
+CSRF_COOKIE_NAME=csrf_token
+
+RATE_LIMIT_WINDOW_MS=900000
+RATE_LIMIT_MAX=100
+
+AUTH_OTP_TTL_SECONDS=300
+REDIS_URL=
+
+TWILIO_SID=
+TWILIO_TOKEN=
+TWILIO_PHONE=
+
+MAIL_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+SMTP_EMAIL=your-brevo-smtp-login
+SMTP_PASSWORD=your-brevo-smtp-key
+MAIL_SECURE=false
+SMTP_FROM_NAME=Xpense
+SMTP_FROM_EMAIL=verified-sender@example.com
+
+AWS_REGION=ap-south-1
+AWS_ACCESS_KEY_ID=
+AWS_SECRET_ACCESS_KEY=
+AWS_S3_BUCKET=
+AWS_S3_PREFIX=receipts
+AWS_S3_PUBLIC_BASE_URL=
 ```
 
-Mailtrap sandbox captures emails in your Mailtrap inbox. It does not deliver emails to the recipient's real inbox.
+## Brevo Email Setup
 
-## Cookie Auth Notes
+1. In Brevo, open `SMTP & API`.
+2. Go to the `SMTP` tab.
+3. Copy the SMTP login into `SMTP_EMAIL`.
+4. Generate an SMTP key and put the full value in `SMTP_PASSWORD`.
+5. Verify a sender email in Brevo.
+6. Use that verified sender as `SMTP_FROM_EMAIL`.
 
-The API authenticates private routes using an HttpOnly cookie set by `/api/v1/auth/otp/verify`.
+Use:
 
-For production, set `CORS_ORIGIN` to the exact deployed frontend origin, for example:
+```env
+MAIL_HOST=smtp-relay.brevo.com
+SMTP_PORT=587
+MAIL_SECURE=false
+```
+
+`SMTP_PASSWORD` is the Brevo SMTP key, not your Brevo account password. The legacy `PASSWORD` env is still supported as a fallback by the code, but `SMTP_PASSWORD` is preferred.
+
+## Cookie Auth And CSRF
+
+Private routes use an HttpOnly auth cookie set by:
+
+```text
+POST /api/v1/auth/otp/verify
+```
+
+Unsafe authenticated requests require a CSRF token:
+
+```text
+POST, PUT, PATCH, DELETE
+```
+
+The frontend gets a token from:
+
+```text
+GET /api/v1/auth/csrf-token
+```
+
+Then sends:
+
+```http
+X-CSRF-Token: <token>
+```
+
+Do not use `*` for `CORS_ORIGIN` with cookie authentication.
+
+## Render Notes
+
+Set `CORS_ORIGIN` to the deployed frontend origin:
 
 ```env
 CORS_ORIGIN=https://expense-tracker-fe-o0wf.onrender.com
 ```
 
-Do not use `*` for `CORS_ORIGIN` with cookie authentication.
+The frontend currently proxies browser API calls through its SSR server, so browser requests go to `/api/v1/...` on the frontend origin and are forwarded to this backend.
 
-Unsafe authenticated requests (`POST`, `PUT`, `PATCH`, `DELETE`) also require a CSRF token. The frontend gets this from `/api/v1/auth/csrf-token` and sends it back in the `X-CSRF-Token` header.
+## Scripts
+
+```bash
+npm start
+npm run dev
+npm test
+```
