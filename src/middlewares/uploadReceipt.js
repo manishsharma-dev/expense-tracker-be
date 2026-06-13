@@ -1,15 +1,4 @@
-const path = require('path');
 const multer = require('multer');
-
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, path.join(__dirname, '../../uploads/receipts'));
-  },
-  filename: (req, file, cb) => {
-    const extension = path.extname(file.originalname);
-    cb(null, `${req.user._id}-${Date.now()}${extension}`);
-  },
-});
 
 const allowedMimeTypes = new Set([
   'image/jpeg',
@@ -27,7 +16,7 @@ const fileFilter = (_req, file, cb) => {
 };
 
 const uploadReceipt = multer({
-  storage,
+  storage: multer.memoryStorage(),
   fileFilter,
   limits: { fileSize: 10 * 1024 * 1024 },
 });

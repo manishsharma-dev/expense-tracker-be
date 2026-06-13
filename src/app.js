@@ -21,15 +21,30 @@ app.set('trust proxy', 1);
 // Security headers
 app.use(helmet());
 
+const normalizeOrigin = (origin) => {
+  if (!origin) return '';
+  const value = origin.trim().replace(/^['"]|['"]$/g, '');
+
+  try {
+    return new URL(value).origin;
+  } catch {
+    return value.replace(/\/+$/g, '');
+  }
+};
+
 const allowedOrigins = (process.env.CORS_ORIGIN || 'http://localhost:4000,http://localhost:4200')
   .split(',')
-  .map((origin) => origin.trim())
+  .map(normalizeOrigin)
   .filter(Boolean);
+
+logger.info(`Allowed CORS origins: ${allowedOrigins.join(', ')}`);
 
 // CORS
 app.use(cors({
   origin(origin, callback) {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    const requestOrigin = normalizeOrigin(origin);
+    if (!requestOrigin || allowedOrigins.includes(requestOrigin)) return callback(null, true);
+    logger.warn(`Blocked CORS origin: ${requestOrigin || 'missing origin'}`);
     return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,

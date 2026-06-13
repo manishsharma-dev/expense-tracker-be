@@ -17,6 +17,7 @@ const uploadExpenseReceipt = (req, res, next) => {
 router.post('/', protect, uploadExpenseReceipt, expenseController.createExpense);
 router.get('/', protect, expenseController.getAllExpenses);
 router.get('/filter', protect, expenseController.getExpenses);
+router.get('/:id/receipt', protect, expenseController.getReceipt);
 router.get('/:id', protect, expenseController.getExpenseById);
 router.put('/:id', protect, uploadExpenseReceipt, expenseController.updateExpense);
 

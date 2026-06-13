@@ -40,6 +40,11 @@ const expenseSchema = new mongoose.Schema(
               ref: 'Country',
         },
         receipt: {
+            storageProvider: {
+                type: String,
+                enum: ['local', 's3'],
+                default: 's3',
+            },
             originalName: {
                 type: String,
                 trim: true,
@@ -52,12 +57,28 @@ const expenseSchema = new mongoose.Schema(
                 type: String,
                 trim: true,
             },
+            url: {
+                type: String,
+                trim: true,
+            },
+            bucket: {
+                type: String,
+                trim: true,
+            },
+            key: {
+                type: String,
+                trim: true,
+            },
             mimeType: {
                 type: String,
                 trim: true,
             },
             size: {
                 type: Number,
+            },
+            etag: {
+                type: String,
+                trim: true,
             },
         },
         createdBy: {
