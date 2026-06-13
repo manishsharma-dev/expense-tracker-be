@@ -2,6 +2,7 @@ const Expense = require('../models/expense');
 const { getCategoryById } = require('./categoryService');
 const { getSubCategoryById } = require('./subCategoryService');
 const { getPaymentMethodById } = require('./paymentMethodService');
+const { syncExpenseDebtOnCreate, syncExpenseDebtOnUpdate } = require('./debtService');
 
 const allowedSortFields = new Set(['date', 'amount', 'description', 'createdAt', 'updatedAt']);
 
@@ -69,6 +70,7 @@ const validateReferences = async ({ category, subCategory, paymentMethod }, user
 const createExpense = async (payload, createdBy, receipt) => {
   await validateReferences(payload, createdBy);
   const expense = await Expense.create({ ...payload, receipt, createdBy });
+  await syncExpenseDebtOnCreate(expense, createdBy);
   return getExpenseById(expense._id, createdBy);
 }
 
@@ -86,6 +88,7 @@ const updateExpense = async (expenseId, updates, createdBy) => {
     runValidators: true,
   }).populate('category subCategory paymentMethod country');
     if (!expense) throw Object.assign(new Error('Expense not found'), { statusCode: 404 });
+    await syncExpenseDebtOnUpdate(expense, createdBy);
     return expense;
 };
 

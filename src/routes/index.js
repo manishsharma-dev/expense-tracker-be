@@ -13,6 +13,7 @@ router.use("/expenses", require('./expenseRoutes'));
 router.use('/earnings', require('./earningRoutes'));
 router.use('/budgets', require('./budgetRoutes'));
 router.use('/dashboard', require('./dashboardRoutes'));
+router.use('/debts', require('./debtRoutes'));
 
 // Health check
 router.get('/health', (req, res) =>
