@@ -1,6 +1,6 @@
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 const { validationResult } = require('express-validator');
-const {createExpense:_create, getAllExpenses: __getAll, getExpenseById: _getById,getExpenseByFilter: _getByFilter, updateExpense: _updateById } = require('../services/expenseService');
+const {createExpense:_create, deleteExpense: _deleteById, getAllExpenses: __getAll, getExpenseById: _getById,getExpenseByFilter: _getByFilter, updateExpense: _updateById } = require('../services/expenseService');
 const { normalizeCalendarDate } = require('../utils/dateUtils');
 const { getReceiptFromS3, uploadReceiptToS3 } = require('../services/s3StorageService');
 
@@ -15,15 +15,17 @@ const attachReceiptViewUrl = (req, expense) => {
   return payload;
 };
 
+const hasOwn = (body, key) => Object.prototype.hasOwnProperty.call(body, key);
+
 const normalizeExpensePayload = (body) => ({
   amount: body.amount !== undefined ? Number(body.amount) : undefined,
   date: normalizeCalendarDate(body.date),
   category: body.category,
-  subCategory: body.subCategory || undefined,
+  subCategory: hasOwn(body, 'subCategory') ? body.subCategory || null : undefined,
   paymentMethod: body.paymentMethod,
-  country: body.country || undefined,
+  country: hasOwn(body, 'country') ? body.country || null : undefined,
   description: body.description,
-  notes: body.notes || undefined,
+  notes: hasOwn(body, 'notes') ? body.notes || '' : undefined,
 });
 
 const createExpense = async (req, res) => {
@@ -106,6 +108,15 @@ const updateExpense = async (req, res) => {
     }
 };
 
+const deleteExpense = async (req, res) => {
+    try {
+        await _deleteById(req.params.id, req.user._id);
+        sendSuccess(res, null, 'Expense deleted successfully');
+    } catch (err) {
+        sendError(res, err.message, err.statusCode || 500);
+    }
+};
+
 const getReceipt = async (req, res) => {
     try {
         const expense = await _getById(req.params.id, req.user._id);
@@ -126,4 +137,4 @@ const getReceipt = async (req, res) => {
     }
 };
 
-module.exports = { createExpense,getAllExpenses, getExpenses, getExpenseById, getReceipt, updateExpense };
+module.exports = { createExpense, deleteExpense, getAllExpenses, getExpenses, getExpenseById, getReceipt, updateExpense };

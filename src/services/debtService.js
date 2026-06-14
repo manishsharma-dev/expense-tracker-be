@@ -187,6 +187,15 @@ const syncExpenseDebtOnUpdate = async (expense, userId) => {
   await existingTransaction.save();
 };
 
+const syncExpenseDebtOnDelete = async (expenseId, userId) => {
+  const existingTransaction = await DebtTransaction.findOne({ sourceExpense: expenseId, createdBy: userId });
+  if (!existingTransaction) return;
+
+  const reversalDirection = existingTransaction.direction === 'increase' ? 'decrease' : 'increase';
+  await updateDebtBalance(existingTransaction.debtAccount, userId, existingTransaction.amount, reversalDirection);
+  await existingTransaction.deleteOne();
+};
+
 module.exports = {
   createDebtAccount,
   getDebtAccounts,
@@ -194,5 +203,6 @@ module.exports = {
   getDebtTransactions,
   recordDebtTransaction,
   syncExpenseDebtOnCreate,
+  syncExpenseDebtOnDelete,
   syncExpenseDebtOnUpdate,
 };

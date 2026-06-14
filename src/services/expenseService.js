@@ -2,7 +2,7 @@ const Expense = require('../models/expense');
 const { getCategoryById } = require('./categoryService');
 const { getSubCategoryById } = require('./subCategoryService');
 const { getPaymentMethodById } = require('./paymentMethodService');
-const { syncExpenseDebtOnCreate, syncExpenseDebtOnUpdate } = require('./debtService');
+const { syncExpenseDebtOnCreate, syncExpenseDebtOnDelete, syncExpenseDebtOnUpdate } = require('./debtService');
 
 const allowedSortFields = new Set(['date', 'amount', 'description', 'createdAt', 'updatedAt']);
 
@@ -76,10 +76,11 @@ const createExpense = async (payload, createdBy, receipt) => {
 
 const updateExpense = async (expenseId, updates, createdBy) => {
   const currentExpense = await getExpenseById(expenseId, createdBy);
+  const hasUpdate = (key) => Object.prototype.hasOwnProperty.call(updates, key);
   const nextPayload = {
-    category: updates.category ?? currentExpense.category._id,
-    subCategory: updates.subCategory ?? currentExpense.subCategory?._id,
-    paymentMethod: updates.paymentMethod ?? currentExpense.paymentMethod._id,
+    category: hasUpdate('category') ? updates.category : currentExpense.category._id,
+    subCategory: hasUpdate('subCategory') ? updates.subCategory : currentExpense.subCategory?._id,
+    paymentMethod: hasUpdate('paymentMethod') ? updates.paymentMethod : currentExpense.paymentMethod._id,
   };
   await validateReferences(nextPayload, createdBy);
 
@@ -92,5 +93,14 @@ const updateExpense = async (expenseId, updates, createdBy) => {
     return expense;
 };
 
-module.exports = { getAllExpenses,getExpenseByFilter, getExpenseById, createExpense, updateExpense };
+const deleteExpense = async (expenseId, createdBy) => {
+  const expense = await Expense.findOne({ _id: expenseId, createdBy });
+  if (!expense) throw Object.assign(new Error('Expense not found'), { statusCode: 404 });
+
+  await syncExpenseDebtOnDelete(expense._id, createdBy);
+  await expense.deleteOne();
+  return expense;
+};
+
+module.exports = { getAllExpenses,getExpenseByFilter, getExpenseById, createExpense, updateExpense, deleteExpense };
 

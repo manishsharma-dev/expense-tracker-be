@@ -20,5 +20,6 @@ router.get('/filter', protect, expenseController.getExpenses);
 router.get('/:id/receipt', protect, expenseController.getReceipt);
 router.get('/:id', protect, expenseController.getExpenseById);
 router.put('/:id', protect, uploadExpenseReceipt, expenseController.updateExpense);
+router.delete('/:id', protect, expenseController.deleteExpense);
 
 module.exports = router;
