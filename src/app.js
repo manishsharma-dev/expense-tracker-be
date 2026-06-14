@@ -58,7 +58,7 @@ app.use(cors({
   credentials: true,
 }));
 
-const createRateLimiter = ({ windowMs, max, message }) => rateLimit({
+const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
   windowMs,
   max,
   keyGenerator: (req) => getClientIp(req),
@@ -66,15 +66,37 @@ const createRateLimiter = ({ windowMs, max, message }) => rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: { success: false, message },
+  handler: (req, res) => {
+    logger.warn('Rate limit exceeded', {
+      limiter: name,
+      method: req.method,
+      path: req.path,
+      originalUrl: req.originalUrl,
+      ip: req.ip,
+      clientIp: getClientIp(req),
+      xForwardedFor: req.headers['x-forwarded-for'],
+      xRealIp: req.headers['x-real-ip'],
+      origin: req.headers.origin,
+      referer: req.headers.referer,
+      userAgent: req.headers['user-agent'],
+      limit: max,
+      windowMs,
+      rateLimit: req.rateLimit,
+    });
+
+    res.status(429).json({ success: false, message });
+  },
 });
 
 const generalLimiter = createRateLimiter({
+  name: 'general',
   windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
   max: Number(process.env.RATE_LIMIT_MAX) || 1000,
   message: 'Too many requests, please try again later.',
 });
 
 const authLimiter = createRateLimiter({
+  name: 'auth',
   windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 10 * 60 * 1000,
   max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
   message: 'Too many authentication attempts, please try again later.',
