@@ -58,15 +58,33 @@ app.use(cors({
   credentials: true,
 }));
 
+const createRateLimiter = ({ windowMs, max, message }) => rateLimit({
+  windowMs,
+  max,
+  keyGenerator: (req) => getClientIp(req),
+  skip: (req) => req.method === 'OPTIONS' || req.path.endsWith('/health'),
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { success: false, message },
+});
+
+const generalLimiter = createRateLimiter({
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
+  max: Number(process.env.RATE_LIMIT_MAX) || 1000,
+  message: 'Too many requests, please try again later.',
+});
+
+const authLimiter = createRateLimiter({
+  windowMs: Number(process.env.AUTH_RATE_LIMIT_WINDOW_MS) || 10 * 60 * 1000,
+  max: Number(process.env.AUTH_RATE_LIMIT_MAX) || 10,
+  message: 'Too many authentication attempts, please try again later.',
+});
+
 // Rate limiting
-app.use(
-  rateLimit({
-    windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000,
-    max: Number(process.env.RATE_LIMIT_MAX) || 100,
-    keyGenerator: (req) => getClientIp(req),
-    message: { success: false, message: 'Too many requests, please try again later.' },
-  })
-);
+app.use('/api/v1/auth/otp/request', authLimiter);
+app.use('/api/v1/auth/otp/verify', authLimiter);
+app.use('/api/v1/auth/register', authLimiter);
+app.use(generalLimiter);
 
 // Body parsing
 app.use(express.json({ limit: '10kb' }));
