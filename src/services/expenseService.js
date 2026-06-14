@@ -18,19 +18,31 @@ const getAllExpenses = async (userId, options = {}) => {
   if (options.subCategory) query.subCategory = options.subCategory;
   if (options.paymentMethod) query.paymentMethod = options.paymentMethod;
   if (options.country) query.country = options.country;
+  if (options.startDate || options.endDate) {
+    query.date = {};
+    if (options.startDate) query.date.$gte = new Date(options.startDate);
+    if (options.endDate) {
+      const endDate = new Date(options.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      query.date.$lte = endDate;
+    }
+  }
   if (options.search?.trim()) {
     const search = new RegExp(options.search.trim(), 'i');
     query.$or = [{ description: search }, { notes: search }];
   }
 
-  const [expenses, total] = await Promise.all([
+  const [expenses, total, totalAmountItems] = await Promise.all([
     Expense.find(query)
       .populate('category subCategory paymentMethod country')
       .sort({ [sortBy]: sortOrder, _id: -1 })
       .skip(skip)
       .limit(limit),
     Expense.countDocuments(query),
+    Expense.find(query).select('amount').lean(),
   ]);
+
+  const totalAmount = totalAmountItems.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
   return {
     expenses,
@@ -39,6 +51,9 @@ const getAllExpenses = async (userId, options = {}) => {
       limit,
       total,
       totalPages: Math.ceil(total / limit),
+    },
+    summary: {
+      totalAmount,
     },
   };
 };

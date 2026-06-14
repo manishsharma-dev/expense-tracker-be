@@ -53,6 +53,8 @@ const getAllExpenses = async (req, res) => {
             subCategory: req.query.subCategory,
             paymentMethod: req.query.paymentMethod,
             country: req.query.country,
+            startDate: req.query.startDate,
+            endDate: req.query.endDate,
         });
         sendSuccess(res, {
             ...result,
