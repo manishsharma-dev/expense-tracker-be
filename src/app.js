@@ -58,6 +58,9 @@ app.use(cors({
   credentials: true,
 }));
 
+// HTTP request logging
+app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
+
 const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
   windowMs,
   max,
@@ -67,6 +70,7 @@ const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
   legacyHeaders: false,
   message: { success: false, message },
   handler: (req, res) => {
+    res.setHeader('X-RateLimit-Limiter', name);
     logger.warn('Rate limit exceeded', {
       limiter: name,
       method: req.method,
@@ -111,9 +115,6 @@ app.use(generalLimiter);
 // Body parsing
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
-
-// HTTP request logging
-app.use(morgan(process.env.NODE_ENV === 'production' ? 'combined' : 'dev'));
 
 const csrfExemptPaths = new Set([
   '/auth/register',

@@ -11,11 +11,13 @@ const logger = createLogger({
     new transports.Console({
       format: format.combine(
         format.colorize(),
-        format.printf(({ timestamp, level, message, stack }) =>
-          stack
-            ? `${timestamp} [${level}]: ${message}\n${stack}`
-            : `${timestamp} [${level}]: ${message}`
-        )
+        format.printf((info) => {
+          const { timestamp, level, message, stack, ...meta } = info;
+          const metaOutput = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : '';
+          return stack
+            ? `${timestamp} [${level}]: ${message}${metaOutput}\n${stack}`
+            : `${timestamp} [${level}]: ${message}${metaOutput}`;
+        })
       ),
     }),
     new transports.File({ filename: 'logs/error.log', level: 'error' }),
