@@ -71,7 +71,10 @@ const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
   message: { success: false, message },
   handler: (req, res) => {
     res.setHeader('X-RateLimit-Limiter', name);
-    logger.warn('Rate limit exceeded', {
+    res.setHeader('X-Xpense-429-Source', 'backend-express-rate-limiter');
+    res.setHeader('Cache-Control', 'no-store');
+
+    const logPayload = {
       limiter: name,
       method: req.method,
       path: req.path,
@@ -86,7 +89,10 @@ const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
       limit: max,
       windowMs,
       rateLimit: req.rateLimit,
-    });
+    };
+
+    console.warn('Rate limit exceeded', JSON.stringify(logPayload));
+    logger.warn('Rate limit exceeded', logPayload);
 
     res.status(429).json({ success: false, message });
   },
