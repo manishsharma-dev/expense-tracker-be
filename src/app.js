@@ -47,6 +47,8 @@ const getClientIp = (req) => {
   return forwardedFor || req.ip;
 };
 
+const getProxyObservedClientIp = (req) => `${req.headers['x-xpense-client-ip'] || ''}`.trim();
+
 // CORS
 app.use(cors({
   origin(origin, callback) {
@@ -81,7 +83,10 @@ const createRateLimiter = ({ name, windowMs, max, message }) => rateLimit({
       originalUrl: req.originalUrl,
       ip: req.ip,
       clientIp: getClientIp(req),
+      proxyObservedClientIp: getProxyObservedClientIp(req),
       xForwardedFor: req.headers['x-forwarded-for'],
+      xpenseClientIp: req.headers['x-xpense-client-ip'],
+      xpenseOriginalForwardedFor: req.headers['x-xpense-original-forwarded-for'],
       xRealIp: req.headers['x-real-ip'],
       origin: req.headers.origin,
       referer: req.headers.referer,
