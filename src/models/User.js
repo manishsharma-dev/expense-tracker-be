@@ -22,9 +22,19 @@ const userSchema = new mongoose.Schema(
       trim: true,
       match: [/^\+?[1-9]\d{1,14}$/, 'Please enter a valid phone number'],
     },
+    gender: {
+      type: String,
+      enum: ['female', 'male', 'non_binary', 'prefer_not_to_say', 'other'],
+    },
+    dateOfBirth: {
+      type: Date,
+    },
     country: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Country',
+    },
+    profileReminderDismissedAt: {
+      type: Date,
     },
     isActive: {
       type: Boolean,

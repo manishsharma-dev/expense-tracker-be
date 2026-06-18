@@ -4,6 +4,8 @@ const { protect, restrictTo } = require('../middlewares/auth');
 
 router.use(protect);
 
+router.patch('/me', userController.updateMe);
+router.post('/me/profile-reminder/later', userController.remindProfileLater);
 router.get('/', restrictTo('admin'), userController.getAllUsers);
 router.get('/:id', userController.getUserById);
 router.patch('/:id', userController.updateUser);

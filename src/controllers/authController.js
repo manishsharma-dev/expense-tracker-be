@@ -8,6 +8,7 @@ const {
   createLoginSession: _createLoginSession,
   logout: _logout,
 } = require('../services/authService');
+const { toUserResponse } = require('../services/userService');
 const { sendCreated, sendSuccess, sendBadRequest, sendError } = require('../utils/apiResponse');
 const { clearCsrfCookie, createCsrfToken, setCsrfCookie } = require('../utils/csrf');
 
@@ -43,7 +44,7 @@ const register = async (req, res) => {
 
   try {
     const { user } = await _register(req.body);
-    sendCreated(res, { user }, 'Registration successful');
+    sendCreated(res, { user: toUserResponse(user) }, 'Registration successful');
   } catch (err) {
     const message = process.env.NODE_ENV === 'production' && err.code === 'EAUTH'
       ? 'Could not send OTP email'
@@ -93,7 +94,7 @@ const verifyOtp = async (req, res) => {
     setAuthCookie(res, token);
     const csrfToken = createCsrfToken();
     setCsrfCookie(res, csrfToken);
-    sendSuccess(res, { user, sessionId: session._id, csrfToken }, 'Login successful');
+    sendSuccess(res, { user: toUserResponse(user), sessionId: session._id, csrfToken }, 'Login successful');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -116,7 +117,7 @@ const logout = async (req, res) => {
   }
 };
 
-const getMe = (req, res) => sendSuccess(res, { user: req.user }, 'Profile fetched');
+const getMe = (req, res) => sendSuccess(res, { user: toUserResponse(req.user) }, 'Profile fetched');
 
 module.exports = {
   register,

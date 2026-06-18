@@ -28,6 +28,24 @@ const updateUser = async (req, res) => {
   }
 };
 
+const updateMe = async (req, res) => {
+  try {
+    const user = await userService.updateOwnProfile(req.user._id, req.body);
+    sendSuccess(res, { user: userService.toUserResponse(user) }, 'Profile updated');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const remindProfileLater = async (req, res) => {
+  try {
+    const user = await userService.dismissProfileReminder(req.user._id);
+    sendSuccess(res, { user: userService.toUserResponse(user) }, 'Profile reminder postponed');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
 const deleteUser = async (req, res) => {
   try {
     await userService.deleteUser(req.params.id);
@@ -37,4 +55,11 @@ const deleteUser = async (req, res) => {
   }
 };
 
-module.exports = { getAllUsers, getUserById, updateUser, deleteUser };
+module.exports = {
+  getAllUsers,
+  getUserById,
+  updateUser,
+  updateMe,
+  remindProfileLater,
+  deleteUser,
+};
