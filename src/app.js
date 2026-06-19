@@ -1,4 +1,6 @@
 require('dotenv').config();
+const fs = require('fs');
+const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
 const cors = require('cors');
@@ -12,6 +14,7 @@ const { csrfProtection } = require('./middlewares/csrfProtection');
 const logger = require('./utils/logger');
 
 const app = express();
+const publicPath = path.join(__dirname, '..', 'public');
 
 // Connect to MongoDB
 connectDB();
@@ -127,6 +130,11 @@ app.use(generalLimiter);
 app.use(express.json({ limit: '10kb' }));
 app.use(express.urlencoded({ extended: true }));
 
+// Runtime config for the Angular app when served by this BE service.
+app.get('/api/config', (_req, res) => {
+  res.json({ apiBaseUrl: '/api/v1' });
+});
+
 const csrfExemptPaths = new Set([
   '/auth/register',
   '/auth/otp/request',
@@ -138,6 +146,15 @@ app.use('/api/v1', (req, res, next) => {
   if (csrfExemptPaths.has(req.path)) return next();
   return csrfProtection(req, res, next);
 }, routes);
+
+// Serve the Angular browser build from expense-tracker-be/public.
+app.use(express.static(publicPath));
+
+app.get(/^(?!\/api).*/, (req, res, next) => {
+  const indexPath = path.join(publicPath, 'index.html');
+  if (!fs.existsSync(indexPath)) return next();
+  res.sendFile(indexPath);
+});
 
 // 404 & global error handler
 app.use(notFound);

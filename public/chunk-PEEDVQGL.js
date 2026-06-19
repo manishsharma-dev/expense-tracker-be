@@ -1,0 +1,1 @@
+import{Hb as r,Ib as s,fc as n,hb as o}from"./chunk-XPPZ5RGI.js";import"./chunk-IMPBB4AK.js";var p=class t{static \u0275fac=function(e){return new(e||t)};static \u0275cmp=o({type:t,selectors:[["app-reports"]],decls:2,vars:0,template:function(e,i){e&1&&(r(0,"p"),n(1,"reports works!"),s())},encapsulation:2})};export{p as Reports};
