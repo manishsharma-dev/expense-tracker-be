@@ -3,6 +3,7 @@ const { validationResult } = require('express-validator');
 const {createExpense:_create, deleteExpense: _deleteById, getAllExpenses: __getAll, getExpenseById: _getById,getExpenseByFilter: _getByFilter, updateExpense: _updateById } = require('../services/expenseService');
 const { normalizeCalendarDate } = require('../utils/dateUtils');
 const { getReceiptFromS3, uploadReceiptToS3 } = require('../services/s3StorageService');
+const { scanReceipt: _scanReceipt } = require('../services/receiptOcrService');
 
 const getReceiptViewUrl = (req, expenseId) => `${req.protocol}://${req.get('host')}${req.baseUrl}/${expenseId}/receipt`;
 
@@ -110,6 +111,15 @@ const updateExpense = async (req, res) => {
     }
 };
 
+const scanReceipt = async (req, res) => {
+    try {
+        const scan = await _scanReceipt(req.file, req.user._id);
+        sendSuccess(res, { scan }, 'Receipt scanned successfully');
+    } catch (err) {
+        sendError(res, err.message, err.statusCode || 500);
+    }
+};
+
 const deleteExpense = async (req, res) => {
     try {
         await _deleteById(req.params.id, req.user._id);
@@ -139,4 +149,4 @@ const getReceipt = async (req, res) => {
     }
 };
 
-module.exports = { createExpense, deleteExpense, getAllExpenses, getExpenses, getExpenseById, getReceipt, updateExpense };
+module.exports = { createExpense, deleteExpense, getAllExpenses, getExpenses, getExpenseById, getReceipt, scanReceipt, updateExpense };

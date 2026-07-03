@@ -36,6 +36,12 @@ const userSchema = new mongoose.Schema(
     profileReminderDismissedAt: {
       type: Date,
     },
+    preferences: {
+      saveScannedReceiptWithExpense: {
+        type: Boolean,
+        default: true,
+      },
+    },
     isActive: {
       type: Boolean,
       default: true,

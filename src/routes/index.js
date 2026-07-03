@@ -10,6 +10,7 @@ router.use('/payment-providers', require('./paymentProviderRoutes'));
 router.use('/payment-methods', require('./paymentMethodRoutes'));
 router.use('/countries', require('./countryRoutes'));
 router.use("/expenses", require('./expenseRoutes'));
+router.use('/merchant-rules', require('./merchantRuleRoutes'));
 router.use('/earnings', require('./earningRoutes'));
 router.use('/budgets', require('./budgetRoutes'));
 router.use('/dashboard', require('./dashboardRoutes'));

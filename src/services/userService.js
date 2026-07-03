@@ -2,7 +2,7 @@ const User = require('../models/User');
 const Country = require('../models/Country');
 
 const profileReminderIntervalMs = 24 * 60 * 60 * 1000;
-const editableProfileFields = ['name', 'email', 'phone', 'gender', 'dateOfBirth', 'country'];
+const editableProfileFields = ['name', 'email', 'phone', 'gender', 'dateOfBirth', 'country', 'preferences'];
 
 const normalizeOptionalString = (value) => {
   if (value === undefined) return undefined;
@@ -49,6 +49,12 @@ const normalizeProfileUpdates = (updates = {}, country) => {
   }
   if (Object.prototype.hasOwnProperty.call(updates, 'dateOfBirth')) {
     normalized.dateOfBirth = updates.dateOfBirth ? new Date(updates.dateOfBirth) : undefined;
+  }
+  if (Object.prototype.hasOwnProperty.call(updates, 'preferences')) {
+    normalized.preferences = {};
+    if (Object.prototype.hasOwnProperty.call(updates.preferences || {}, 'saveScannedReceiptWithExpense')) {
+      normalized.preferences.saveScannedReceiptWithExpense = Boolean(updates.preferences.saveScannedReceiptWithExpense);
+    }
   }
 
   Object.keys(normalized).forEach((key) => {
@@ -161,6 +167,13 @@ const updateOwnProfile = async (userId, updates) => {
   const setUpdates = {};
   const unsetUpdates = {};
   Object.entries(normalizedUpdates).forEach(([key, value]) => {
+    if (key === 'preferences') {
+      Object.entries(value).forEach(([preferenceKey, preferenceValue]) => {
+        setUpdates[`preferences.${preferenceKey}`] = preferenceValue;
+      });
+      return;
+    }
+
     if (value === null || value === undefined) {
       unsetUpdates[key] = '';
     } else {
