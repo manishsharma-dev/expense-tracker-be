@@ -1,61 +1,183 @@
 # Xpense Backend
 
-Backend API for the Xpense expense tracker.
+Node.js backend for **Xpense**, a personal finance tracker. The backend provides the API, authentication, receipt storage/OCR, and can also serve the built Angular frontend from `public`.
+
+## What The Backend Does
+
+- OTP login and registration using email or phone.
+- HttpOnly cookie authentication.
+- CSRF protection for unsafe authenticated requests.
+- User profile and preferences.
+- Expense CRUD with user ownership checks.
+- Receipt upload to S3 and protected receipt viewing.
+- Receipt/payment screenshot OCR using Tesseract.
+- Review-safe receipt scan output with field confidence, source lines, and alternatives.
+- Merchant rules that learn category/payment defaults from prior expenses.
+- Categories, subcategories, payment providers, and user payment methods.
+- Earnings and earning categories.
+- Budgets with total and category-level allocation.
+- Debt accounts, charges, and payments.
+- Dashboard summary API using expenses, earnings, budgets, and categories.
+- Countries and unique currency APIs for currency dropdowns.
+- Rate limiting with detailed 429 logging.
+- Helmet, CORS, Morgan, Winston logging.
+
+## Recommended Deployment Shape
+
+The most reliable production setup is **single-origin**:
+
+```text
+https://your-app.example.com/          Angular frontend served by this backend
+https://your-app.example.com/api/v1    Backend API
+```
+
+Why this matters: authentication uses HttpOnly cookies. Serving the Angular app and API from the same origin avoids mobile browser issues with cross-site cookies on free Render subdomains.
+
+Build the frontend into the backend before deployment:
+
+```bash
+cd ../expense-tracker-fe
+npm run build:be-public
+```
+
+Then deploy/start this backend service.
 
 ## Stack
 
 - Node.js + Express
 - MongoDB + Mongoose
-- OTP login with HttpOnly JWT cookie
-- Redis OTP cache
-- Nodemailer SMTP with Brevo
-- S3 receipt storage
-- Helmet, CORS, CSRF protection, rate limiting
+- Redis for OTP cache
+- Nodemailer/Brevo for email OTP
+- Twilio-ready phone OTP support
+- AWS S3 for receipts
+- Tesseract.js for receipt OCR
+- JWT in HttpOnly cookies
+- CSRF protection
+- Helmet + CORS
+- Express rate limiting
+- Winston logging
 - Jest + Supertest
 
 ## Local Development
 
+Install dependencies:
+
 ```bash
 npm install
+```
+
+Create an env file:
+
+```bash
 cp .env.example .env
+```
+
+Start the API:
+
+```bash
 npm run dev
 ```
 
 Health check:
 
 ```text
-GET /api/v1/health
+GET http://localhost:3000/api/v1/health
 ```
 
-## Key Endpoints
+If `public/index.html` exists, the backend also serves the Angular app:
+
+```text
+http://localhost:3000
+```
+
+## API Overview
+
+All private routes require the auth cookie. Unsafe private requests also require CSRF protection.
 
 ### Auth
 
 | Method | Endpoint | Access | Description |
 | --- | --- | --- | --- |
 | POST | `/api/v1/auth/register` | Public | Register user |
-| POST | `/api/v1/auth/otp/request` | Public | Request email or phone OTP |
+| POST | `/api/v1/auth/otp/request` | Public | Request OTP by email or phone |
 | POST | `/api/v1/auth/otp/verify` | Public | Verify OTP and set auth cookie |
 | GET | `/api/v1/auth/csrf-token` | Private | Issue CSRF token |
 | GET | `/api/v1/auth/me` | Private | Get current user |
 | POST | `/api/v1/auth/logout` | Private | Logout and clear cookies |
 
-### App
+### User
 
-| Method | Endpoint | Access | Description |
-| --- | --- | --- | --- |
-| GET | `/api/v1/dashboard` | Private | Dashboard summary |
-| GET/POST | `/api/v1/expenses` | Private | List or create expenses |
-| GET/PUT | `/api/v1/expenses/:id` | Private | Read or update one expense |
-| GET | `/api/v1/expenses/:id/receipt` | Private | Stream receipt from S3 |
-| GET/POST | `/api/v1/earnings` | Private | List or create earnings |
-| GET/PUT | `/api/v1/budgets` | Private | Read or update budget |
-| GET/POST | `/api/v1/categories` | Private | Expense categories |
-| GET/POST | `/api/v1/sub-categories` | Private | Expense sub categories |
-| GET/POST | `/api/v1/payment-methods` | Private | User payment methods |
-| GET | `/api/v1/payment-providers` | Private | Common providers |
-| GET | `/api/v1/countries` | Private | Countries |
-| GET | `/api/v1/countries/unique-currencies` | Private | Unique currency list |
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| PATCH | `/api/v1/users/me` | Update profile and preferences |
+| POST | `/api/v1/users/me/profile-reminder/later` | Postpone profile reminder |
+
+### Expenses
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/v1/expenses` | List expenses with pagination, filters, sorting, and totals |
+| POST | `/api/v1/expenses` | Create expense, optionally with receipt |
+| GET | `/api/v1/expenses/:id` | Get one expense owned by the current user |
+| PUT | `/api/v1/expenses/:id` | Update one expense owned by the current user |
+| DELETE | `/api/v1/expenses/:id` | Delete one expense owned by the current user |
+| GET | `/api/v1/expenses/:id/receipt` | Stream receipt from S3 for the owning user |
+| POST | `/api/v1/expenses/receipt/scan` | Scan receipt/payment screenshot and return review-safe suggestions |
+
+### Smart Defaults
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/v1/merchant-rules/suggestions` | Suggest category/subcategory/payment method from learned merchant rules |
+
+### Money Management
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET | `/api/v1/dashboard` | Dashboard data |
+| GET/POST | `/api/v1/earnings` | List or create earnings |
+| GET/POST | `/api/v1/earnings/categories` | Earning categories |
+| GET/PUT | `/api/v1/budgets` | Read or update budget |
+| GET/POST | `/api/v1/debts` | Debt accounts |
+| POST | `/api/v1/debts/:id/charges` | Add debt charge |
+| POST | `/api/v1/debts/:id/payments` | Record debt payment |
+
+### Reference Data
+
+| Method | Endpoint | Description |
+| --- | --- | --- |
+| GET/POST | `/api/v1/categories` | Expense categories |
+| GET/POST | `/api/v1/sub-categories` | Expense subcategories |
+| GET/POST | `/api/v1/payment-methods` | User payment methods |
+| PUT | `/api/v1/payment-methods/sequence` | Reorder payment methods |
+| GET | `/api/v1/payment-providers` | Common banks/apps/wallet providers |
+| GET | `/api/v1/countries` | Countries |
+| GET | `/api/v1/countries/unique-currencies` | Unique currency list |
+
+## Receipt OCR
+
+Receipt scanning is intentionally conservative.
+
+The scan endpoint returns old top-level convenience fields plus a safer `fields` object:
+
+```json
+{
+  "description": "Traveni",
+  "amount": 135,
+  "date": "2025-10-14",
+  "paymentMethod": null,
+  "fields": {
+    "amount": {
+      "value": 135,
+      "confidence": "high",
+      "source": "Rupees One Hundred Thirty Five Only",
+      "alternatives": []
+    }
+  }
+}
+```
+
+The frontend only auto-applies high-confidence fields by default. Medium/low confidence values are shown for review.
 
 ## Environment Variables
 
@@ -66,13 +188,15 @@ MONGODB_URI=
 JWT_SECRET=
 JWT_EXPIRES_IN=7d
 
-CORS_ORIGIN=http://localhost:4200,https://expense-tracker-fe-o0wf.onrender.com
+CORS_ORIGIN=http://localhost:4000,http://localhost:4200
 AUTH_COOKIE_NAME=access_token
 AUTH_COOKIE_MAX_AGE_DAYS=7
 CSRF_COOKIE_NAME=csrf_token
 
 RATE_LIMIT_WINDOW_MS=900000
-RATE_LIMIT_MAX=100
+RATE_LIMIT_MAX=1000
+AUTH_RATE_LIMIT_WINDOW_MS=600000
+AUTH_RATE_LIMIT_MAX=10
 
 AUTH_OTP_TTL_SECONDS=300
 REDIS_URL=
@@ -98,28 +222,19 @@ AWS_S3_PREFIX=receipts
 AWS_S3_PUBLIC_BASE_URL=
 ```
 
-## Brevo Email Setup
+## Email Setup
 
-For Render, prefer Brevo's HTTPS API because SMTP port `587` can time out on hosted environments.
+Brevo is supported for email OTP.
+
+Recommended hosted setup:
 
 1. In Brevo, open `SMTP & API`.
-2. Go to `API keys`.
-3. Generate an API key and put the full value in `BREVO_API_KEY`.
-4. Go to the `SMTP` tab only if you also want local SMTP fallback.
-5. Copy the SMTP login into `SMTP_EMAIL`.
-6. Generate an SMTP key and put the full value in `SMTP_PASSWORD`.
-7. Verify a sender email in Brevo.
-8. Use that verified sender as `SMTP_FROM_EMAIL`.
+2. Create an API key.
+3. Set `BREVO_API_KEY`.
+4. Verify a sender email in Brevo.
+5. Set `SMTP_FROM_EMAIL` to that verified sender.
 
-Recommended Render values:
-
-```env
-BREVO_API_KEY=your-brevo-api-key
-SMTP_FROM_NAME=Xpense
-SMTP_FROM_EMAIL=verified-sender@example.com
-```
-
-Optional SMTP fallback values:
+SMTP fallback is available with:
 
 ```env
 MAIL_HOST=smtp-relay.brevo.com
@@ -129,42 +244,23 @@ SMTP_EMAIL=your-brevo-smtp-login
 SMTP_PASSWORD=your-brevo-smtp-key
 ```
 
-`BREVO_API_KEY` is preferred by the code when present. SMTP is used only when `BREVO_API_KEY` is not set.
-
-Legacy SMTP setup:
-
-1. In Brevo, open `SMTP & API`.
-2. Go to the `SMTP` tab.
-3. Copy the SMTP login into `SMTP_EMAIL`.
-4. Generate an SMTP key and put the full value in `SMTP_PASSWORD`.
-5. Verify a sender email in Brevo.
-6. Use that verified sender as `SMTP_FROM_EMAIL`.
-
-Use:
-
-```env
-MAIL_HOST=smtp-relay.brevo.com
-SMTP_PORT=587
-MAIL_SECURE=false
-```
-
-`SMTP_PASSWORD` is the Brevo SMTP key, not your Brevo account password. The legacy `PASSWORD` env is still supported as a fallback by the code, but `SMTP_PASSWORD` is preferred.
+On some free hosting tiers, SMTP ports may time out. Prefer Brevo API when available.
 
 ## Cookie Auth And CSRF
 
-Private routes use an HttpOnly auth cookie set by:
+Login sets an HttpOnly auth cookie:
 
 ```text
 POST /api/v1/auth/otp/verify
 ```
 
-Unsafe authenticated requests require a CSRF token:
+Unsafe private requests require CSRF:
 
 ```text
 POST, PUT, PATCH, DELETE
 ```
 
-The frontend gets a token from:
+The frontend fetches a CSRF token from:
 
 ```text
 GET /api/v1/auth/csrf-token
@@ -178,20 +274,18 @@ X-CSRF-Token: <token>
 
 Do not use `*` for `CORS_ORIGIN` with cookie authentication.
 
-## Render Notes
-
-Set `CORS_ORIGIN` to the deployed frontend origin:
-
-```env
-CORS_ORIGIN=https://expense-tracker-fe-o0wf.onrender.com
-```
-
-The frontend currently proxies browser API calls through its SSR server, so browser requests go to `/api/v1/...` on the frontend origin and are forwarded to this backend.
-
 ## Scripts
 
 ```bash
-npm start
-npm run dev
-npm test
+npm start     # run src/app.js
+npm run dev   # run with nodemon
+npm test      # jest coverage
 ```
+
+## Notes For First-Time Contributors
+
+- User ownership is enforced in services for user-owned data like expenses and payment methods.
+- Receipt files are uploaded to S3 only when the frontend includes the file in the expense request.
+- The scan endpoint does not save a receipt by itself.
+- The backend serves the Angular app from `public` when the frontend has been copied there.
+- Keep generated frontend build output separate from source changes unless you are preparing a backend-served deployment.

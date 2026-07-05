@@ -11,23 +11,58 @@ const normalizeText = (value = '') =>
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 
+const confidenceRank = { none: 0, low: 1, medium: 2, high: 3 };
+const ignoredNumberLine = /\b(invoice|invoice\s*id|invoice\s*no|bill\s*no|order\s*id|transaction\s*id|phonepe\s+transaction|upi\s+ref|utr|ref\s*no|reference|mobile|phone|account|card|ifsc|gstin|gst\s*no|tax\s*id)\b/i;
+const paymentSourceLine = /\b(debited\s+from|paid\s+from|\bfrom\b|state\s+bank|bank\s+of|sbi|hdfc|icici|axis|kotak|yes\s+bank|ending|ends)\b/i;
+
+const emptyField = () => ({ value: null, confidence: 'none', source: '', alternatives: [] });
+
+const createField = ({ value = null, confidence = 'none', source = '', alternatives = [] } = {}) => ({
+  value,
+  confidence,
+  source,
+  alternatives,
+});
+
+const sortCandidates = (candidates) =>
+  candidates
+    .filter((candidate) => candidate.value !== null && candidate.value !== undefined && candidate.value !== '')
+    .sort((a, b) =>
+      confidenceRank[b.confidence] - confidenceRank[a.confidence] ||
+      (b.score ?? 0) - (a.score ?? 0)
+    );
+
 const parseAmount = (text) => {
+  return parseAmountField(text).value;
+};
+
+const parseAmountField = (text) => {
   const lines = normalizeText(text).split('\n').map((line) => line.trim()).filter(Boolean);
+  const candidates = [];
 
   const amountLabelIndex = lines.findIndex((line) => /^amount\b/i.test(line));
   if (amountLabelIndex >= 0) {
     for (const line of lines.slice(amountLabelIndex, amountLabelIndex + 3)) {
       const values = extractMoneyValues(line);
-      if (values.length) return Math.max(...values);
+      values.forEach((value) => candidates.push({
+        value,
+        confidence: ignoredNumberLine.test(line) ? 'low' : 'high',
+        score: 95,
+        source: line,
+      }));
 
       const wordsValue = parseAmountWords(line);
-      if (wordsValue) return wordsValue;
+      if (wordsValue) {
+        candidates.push({ value: wordsValue, confidence: 'high', score: 98, source: line });
+      }
     }
   }
 
   const wordsAmountLine = lines.find((line) => /\brupees?\b.+\bonly\b/i.test(line));
   const wordsAmount = parseAmountWords(wordsAmountLine);
-  if (wordsAmount) return wordsAmount;
+  if (wordsAmount) {
+    candidates.push({ value: wordsAmount, confidence: 'high', score: 96, source: wordsAmountLine });
+  }
 
   const totalLinePatterns = [
     /\bgrand\s+total\b/i,
@@ -40,20 +75,57 @@ const parseAmount = (text) => {
   for (const pattern of totalLinePatterns) {
     const line = [...lines].reverse().find((item) => pattern.test(item) && extractMoneyValues(item).length);
     if (line) {
-      const values = extractMoneyValues(line);
-      if (values.length) return Math.max(...values);
+      extractMoneyValues(line).forEach((value) => candidates.push({
+        value,
+        confidence: ignoredNumberLine.test(line) ? 'low' : 'high',
+        score: 90,
+        source: line,
+      }));
     }
   }
 
   const amountContext = /\b(amount|total|payable)\b|[\u20b9$]/i;
-  const ignoredAmountContext = /\b(utr|transaction\s+id|phonepe\s+transaction|upi\s+ref|at\s+\d{1,2}:\d{2}|date|time|mobile|phone|debited\s+from|paid\s+from|\bfrom\b|state\s+bank|bank\s+of|sbi)\b/i;
-  const contextValues = lines
-    .filter((line) => amountContext.test(line) && !ignoredAmountContext.test(line))
-    .flatMap((line) => extractMoneyValues(line));
-  if (contextValues.length) return Math.max(...contextValues);
+  lines
+    .filter((line) => amountContext.test(line))
+    .forEach((line) => {
+      extractMoneyValues(line).forEach((value) => {
+        const risky = ignoredNumberLine.test(line) || paymentSourceLine.test(line);
+        candidates.push({
+          value,
+          confidence: risky ? 'low' : 'medium',
+          score: risky ? 20 : 60,
+          source: line,
+        });
+      });
+    });
 
-  const allValues = extractMoneyValues(text).filter((value) => value < 1000000);
-  return allValues.length ? Math.max(...allValues) : null;
+  lines.forEach((line) => {
+    extractMoneyValues(line)
+      .filter((value) => value < 1000000)
+      .forEach((value) => {
+        const risky = ignoredNumberLine.test(line) || paymentSourceLine.test(line);
+        candidates.push({
+          value,
+          confidence: risky ? 'low' : 'low',
+          score: risky ? 5 : 15,
+          source: line,
+        });
+      });
+  });
+
+  const sortedCandidates = sortCandidates(candidates);
+  const best = sortedCandidates[0];
+  if (!best) return emptyField();
+
+  return createField({
+    value: best.value,
+    confidence: best.confidence,
+    source: best.source,
+    alternatives: sortedCandidates
+      .filter((candidate) => candidate.value !== best.value)
+      .slice(0, 4)
+      .map(({ value, confidence, source }) => ({ value, confidence, source })),
+  });
 };
 
 const extractMoneyValues = (text = '') => {
@@ -146,6 +218,63 @@ const parseAmountWords = (text = '') => {
 };
 
 const parseDate = (text) => {
+  return parseDateField(text).value;
+};
+
+const parseDateField = (text) => {
+  const normalized = normalizeText(text);
+  const lines = normalized.split('\n').map((line) => line.trim()).filter(Boolean);
+  const candidates = [];
+
+  lines.forEach((line) => {
+    const numericDate = line.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/);
+    if (numericDate) {
+      const first = Number(numericDate[1]);
+      const second = Number(numericDate[2]);
+      const year = Number(numericDate[3].length === 2 ? `20${numericDate[3]}` : numericDate[3]);
+      const day = first > 12 ? first : second > 12 ? second : first;
+      const month = first > 12 ? second : second > 12 ? first : second;
+      const value = formatDate(year, month, day);
+      if (value) candidates.push({
+        value,
+        confidence: ignoredNumberLine.test(line) ? 'low' : 'medium',
+        score: ignoredNumberLine.test(line) ? 20 : 60,
+        source: line,
+      });
+    }
+
+    const isoDate = line.match(/\b(20\d{2})[/-](\d{1,2})[/-](\d{1,2})\b/);
+    if (isoDate) {
+      const value = formatDate(Number(isoDate[1]), Number(isoDate[2]), Number(isoDate[3]));
+      if (value) candidates.push({ value, confidence: 'high', score: 90, source: line });
+    }
+
+    const namedDate = line.match(/\b(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|sept|oct|nov|dec)[a-z]*\s+(20\d{2}|\d{2})\b/i);
+    if (namedDate) {
+      const month = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec']
+        .indexOf(namedDate[2].toLowerCase().slice(0, 3)) + 1;
+      const year = Number(namedDate[3].length === 2 ? `20${namedDate[3]}` : namedDate[3]);
+      const value = formatDate(year, month, Number(namedDate[1]));
+      if (value) candidates.push({ value, confidence: 'high', score: 95, source: line });
+    }
+  });
+
+  const sortedCandidates = sortCandidates(candidates);
+  const best = sortedCandidates[0];
+  if (!best) return emptyField();
+
+  return createField({
+    value: best.value,
+    confidence: best.confidence,
+    source: best.source,
+    alternatives: sortedCandidates
+      .filter((candidate) => candidate.value !== best.value)
+      .slice(0, 3)
+      .map(({ value, confidence, source }) => ({ value, confidence, source })),
+  });
+};
+
+const parseDateLegacy = (text) => {
   const normalized = normalizeText(text);
   const numericDate = normalized.match(/\b(\d{1,2})[/-](\d{1,2})[/-](\d{2,4})\b/);
   if (numericDate) {
@@ -185,6 +314,10 @@ const formatDate = (year, month, day) => {
 };
 
 const parseMerchant = (text) => {
+  return parseMerchantField(text).value || '';
+};
+
+const parseMerchantField = (text) => {
   const lines = normalizeText(text)
     .split('\n')
     .map((item) => item.trim())
@@ -193,11 +326,11 @@ const parseMerchant = (text) => {
   const paidToIndex = lines.findIndex((item) => /\bpaid\s+to\b/i.test(item));
   if (paidToIndex >= 0) {
     const paidToLine = sanitizeMerchantLine(lines[paidToIndex].replace(/\bpaid\s+to\b/i, ''));
-    if (paidToLine) return paidToLine;
+    if (paidToLine) return createField({ value: paidToLine, confidence: 'high', source: lines[paidToIndex] });
 
     for (const line of lines.slice(paidToIndex + 1, paidToIndex + 4)) {
       const merchant = sanitizeMerchantLine(line);
-      if (merchant) return merchant;
+      if (merchant) return createField({ value: merchant, confidence: 'high', source: line });
     }
   }
 
@@ -205,21 +338,27 @@ const parseMerchant = (text) => {
   if (toIndex >= 0) {
     for (const line of lines.slice(toIndex + 1, toIndex + 4)) {
       const merchant = sanitizeMerchantLine(line);
-      if (merchant) return merchant;
+      if (merchant) return createField({ value: merchant, confidence: 'high', source: line });
     }
   }
 
   const bankingName = lines
     .map((item) => item.match(/\bbanking\s+name\s*:?\s*(.+)$/i)?.[1])
     .find(Boolean);
-  if (bankingName) return sanitizeMerchantLine(bankingName);
+  if (bankingName) {
+    const merchant = sanitizeMerchantLine(bankingName);
+    if (merchant) return createField({ value: merchant, confidence: 'medium', source: bankingName });
+  }
 
   const ignored = /\b(invoice|receipt|tax|gst|date|time|cashier|bill|phone|mobile|email|total|amount|transaction|successful|payment|details|debited|utr|sent|share|help)\b/i;
   const line = lines
     .filter((item) => item.length >= 3 && item.length <= 80)
     .find((item) => !ignored.test(item) && /[a-z]/i.test(item));
 
-  return sanitizeMerchantLine(line) || '';
+  const merchant = sanitizeMerchantLine(line);
+  return merchant
+    ? createField({ value: merchant, confidence: 'low', source: line })
+    : emptyField();
 };
 
 const parsePaymentSourceText = (text) => {
@@ -381,6 +520,18 @@ const findPaymentMethodMatch = (scanText, paymentMethods = []) => {
   return bestMatch;
 };
 
+const parsePaymentMethodField = (scanText, paymentMethods = []) => {
+  const match = findPaymentMethodMatch(scanText, paymentMethods);
+  if (!match) return emptyField();
+
+  return createField({
+    value: match.paymentMethod,
+    confidence: match.score >= 90 ? 'high' : match.score >= 75 ? 'medium' : 'low',
+    source: match.sourceText,
+    alternatives: [],
+  });
+};
+
 const sanitizeMerchantLine = (line = '') => {
   const cleaned = String(line)
     .replace(moneyPattern, ' ')
@@ -411,22 +562,32 @@ const scanReceipt = async (file, userId) => {
   const result = await Tesseract.recognize(file.buffer, 'eng');
   const text = normalizeText(result.data?.text || '');
   const paymentMethods = userId ? await getAllPaymentMethods(userId) : [];
-  const paymentMethodMatch = findPaymentMethodMatch(text, paymentMethods);
+  const fields = parseReceiptFields(text, paymentMethods);
 
   return {
-    ...parseReceiptText(text),
-    paymentMethod: paymentMethodMatch?.paymentMethod ?? null,
-    paymentMethodMatch: paymentMethodMatch
+    description: fields.description.value || '',
+    amount: fields.amount.value,
+    date: fields.date.value,
+    paymentMethod: fields.paymentMethod.value,
+    paymentMethodMatch: fields.paymentMethod.value
       ? {
-          score: paymentMethodMatch.score,
-          reason: paymentMethodMatch.reason,
-          sourceText: paymentMethodMatch.sourceText,
+          score: confidenceRank[fields.paymentMethod.confidence] * 25,
+          reason: fields.paymentMethod.confidence,
+          sourceText: fields.paymentMethod.source,
         }
       : null,
+    fields,
     confidence: Math.round(result.data?.confidence || 0),
     rawText: text.slice(0, 4000),
   };
 };
+
+const parseReceiptFields = (text, paymentMethods = []) => ({
+  description: parseMerchantField(text),
+  amount: parseAmountField(text),
+  date: parseDateField(text),
+  paymentMethod: parsePaymentMethodField(text, paymentMethods),
+});
 
 const parseReceiptText = (text) => ({
   description: parseMerchant(text),
@@ -434,4 +595,4 @@ const parseReceiptText = (text) => ({
   date: parseDate(text),
 });
 
-module.exports = { findPaymentMethodMatch, parseReceiptText, scanReceipt };
+module.exports = { findPaymentMethodMatch, parseReceiptFields, parseReceiptText, scanReceipt };
