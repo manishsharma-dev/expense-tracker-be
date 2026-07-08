@@ -1,6 +1,6 @@
 const Earning = require('../models/earning');
 const EarningCategory = require('../models/earningCategory');
-const { normalizeCalendarDate } = require('../utils/dateUtils');
+const { getUserTimeZone, normalizeCalendarDate } = require('../utils/dateUtils');
 
 const defaultCategories = [
   { name: 'Salary', color: 'green', icon: 'payments' },
@@ -54,7 +54,12 @@ const createCategory = async ({ name, color, icon }, userId) => {
   return EarningCategory.create({ name: name.trim(), color, icon, createdBy: userId });
 };
 
+const toPositiveInt = (value, fallback, max = 100) => Math.min(Math.max(Number(value) || fallback, 1), max);
+
 const getEarnings = async (userId, options = {}) => {
+  const page = toPositiveInt(options.page, 1);
+  const limit = toPositiveInt(options.limit, 6);
+  const skip = (page - 1) * limit;
   const query = { createdBy: userId };
   if (options.category) query.category = options.category;
   if (options.startDate || options.endDate) {
@@ -63,7 +68,94 @@ const getEarnings = async (userId, options = {}) => {
     if (options.endDate) query.date.$lte = new Date(options.endDate);
   }
 
-  return Earning.find(query).populate('category country').sort({ date: -1, _id: -1 });
+  const [earnings, total] = await Promise.all([
+    Earning.find(query)
+      .populate('category country')
+      .sort({ date: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit),
+    Earning.countDocuments(query),
+  ]);
+
+  return {
+    earnings,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    },
+  };
+};
+
+const periodFormatByType = {
+  day: '%Y-%m-%d',
+  week: '%G-W%V',
+  month: '%Y-%m',
+  year: '%Y',
+};
+
+const getEarningSummary = async (user, options = {}) => {
+  const period = periodFormatByType[options.period] ? options.period : 'month';
+  const page = toPositiveInt(options.page, 1, 200);
+  const limit = toPositiveInt(options.limit, 6, 24);
+  const skip = (page - 1) * limit;
+  const timeZone = getUserTimeZone(user);
+  const match = { createdBy: user._id };
+
+  const groupedQuery = [
+    { $match: match },
+    {
+      $group: {
+        _id: {
+          $dateToString: {
+            date: '$date',
+            format: periodFormatByType[period],
+            timezone: timeZone,
+          },
+        },
+        totalAmount: { $sum: '$amount' },
+        count: { $sum: 1 },
+        from: { $min: '$date' },
+        to: { $max: '$date' },
+      },
+    },
+    { $sort: { _id: -1 } },
+  ];
+
+  const [rows, countResult] = await Promise.all([
+    Earning.aggregate([
+      ...groupedQuery,
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 0,
+          period,
+          periodKey: '$_id',
+          totalAmount: 1,
+          count: 1,
+          from: 1,
+          to: 1,
+        },
+      },
+    ]),
+    Earning.aggregate([...groupedQuery, { $count: 'total' }]),
+  ]);
+
+  const total = countResult[0]?.total ?? 0;
+  return {
+    period,
+    rows,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    },
+  };
 };
 
 const createEarning = async (payload, userId) => {
@@ -83,5 +175,6 @@ module.exports = {
   getCategories,
   createCategory,
   getEarnings,
+  getEarningSummary,
   createEarning,
 };

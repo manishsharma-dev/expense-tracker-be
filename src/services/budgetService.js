@@ -1,10 +1,12 @@
 const Budget = require('../models/budget');
+const Expense = require('../models/expense');
 const { getCategoryById } = require('./categoryService');
+const { getMonthKey, getMonthRange, getUserTimeZone } = require('../utils/dateUtils');
 
-const getCurrentMonth = () => new Date().toISOString().slice(0, 7);
+const getCurrentMonth = (timeZone) => getMonthKey(new Date(), timeZone);
 
-const normalizeMonth = (month) => {
-  if (!month) return getCurrentMonth();
+const normalizeMonth = (month, timeZone) => {
+  if (!month) return getCurrentMonth(timeZone);
   if (!/^\d{4}-\d{2}$/.test(month)) {
     throw Object.assign(new Error('Month must be in YYYY-MM format'), { statusCode: 400 });
   }
@@ -51,35 +53,78 @@ const validateBudgetLimit = (totalAmount, allocations) => {
   }
 };
 
-const getBudget = async (userId, month) => {
-  const budgetMonth = normalizeMonth(month);
-  return Budget.findOne({
+const attachAllocationUsage = async (budget, user) => {
+  if (!budget) return null;
+
+  const timeZone = getUserTimeZone(user);
+  const { start, end } = getMonthRange(budget.month, timeZone);
+  const categorySpend = await Expense.aggregate([
+    {
+      $match: {
+        createdBy: user._id,
+        date: { $gte: start, $lt: end },
+      },
+    },
+    {
+      $group: {
+        _id: '$category',
+        used: { $sum: '$amount' },
+      },
+    },
+  ]);
+  const usedByCategory = new Map(categorySpend.map((item) => [`${item._id}`, item.used]));
+  const budgetObject = budget.toObject();
+
+  budgetObject.allocations = budgetObject.allocations.map((allocation) => {
+    const used = usedByCategory.get(`${allocation.category?._id ?? allocation.category}`) ?? 0;
+    const remaining = allocation.amount - used;
+    const utilizationPercent = allocation.amount > 0 ? Math.round((used / allocation.amount) * 100) : 0;
+
+    return {
+      ...allocation,
+      used,
+      remaining,
+      utilizationPercent,
+      isOverBudget: used > allocation.amount,
+    };
+  });
+
+  return budgetObject;
+};
+
+const getBudget = async (user, month) => {
+  const budgetMonth = normalizeMonth(month, getUserTimeZone(user));
+  const budget = await Budget.findOne({
     month: budgetMonth,
-    createdBy: userId,
+    createdBy: user._id,
     isDeleted: false,
     isActive: true,
   }).populate('allocations.category');
+
+  return attachAllocationUsage(budget, user);
 };
 
-const upsertBudget = async ({ month, totalAmount, allocations }, userId) => {
-  const budgetMonth = normalizeMonth(month);
+const upsertBudget = async ({ month, totalAmount, allocations }, user) => {
+  const budgetMonth = normalizeMonth(month, getUserTimeZone(user));
   const normalizedTotalAmount = normalizeAmount(totalAmount, 'Total budget');
-  const normalizedAllocations = await normalizeAllocations(allocations, userId);
+  const normalizedAllocations = await normalizeAllocations(allocations, user._id);
   validateBudgetLimit(normalizedTotalAmount, normalizedAllocations);
 
-  return Budget.findOneAndUpdate(
-    { month: budgetMonth, createdBy: userId, isDeleted: false },
+  const budget = await Budget.findOneAndUpdate(
+    { month: budgetMonth, createdBy: user._id, isDeleted: false },
     {
       month: budgetMonth,
       totalAmount: normalizedTotalAmount,
       allocations: normalizedAllocations,
-      createdBy: userId,
-      updatedBy: userId,
+      createdBy: user._id,
+      updatedBy: user._id,
       isActive: true,
       isDeleted: false,
     },
     { new: true, upsert: true, runValidators: true, setDefaultsOnInsert: true }
   ).populate('allocations.category');
+
+  return attachAllocationUsage(budget, user);
 };
 
 module.exports = {

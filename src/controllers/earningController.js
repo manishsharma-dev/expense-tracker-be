@@ -3,6 +3,7 @@ const {
   getCategories: _getCategories,
   createCategory: _createCategory,
   getEarnings: _getEarnings,
+  getEarningSummary: _getEarningSummary,
   createEarning: _createEarning,
 } = require('../services/earningService');
 
@@ -27,7 +28,16 @@ const createCategory = async (req, res) => {
 const getEarnings = async (req, res) => {
   try {
     const earnings = await _getEarnings(req.user._id, req.query);
-    sendSuccess(res, { earnings }, 'Earnings fetched successfully');
+    sendSuccess(res, earnings, 'Earnings fetched successfully');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const getEarningSummary = async (req, res) => {
+  try {
+    const summary = await _getEarningSummary(req.user, req.query);
+    sendSuccess(res, summary, 'Earning summary fetched successfully');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -46,5 +56,6 @@ module.exports = {
   getCategories,
   createCategory,
   getEarnings,
+  getEarningSummary,
   createEarning,
 };

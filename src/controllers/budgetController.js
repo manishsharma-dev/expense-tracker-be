@@ -6,7 +6,7 @@ const {
 
 const getBudget = async (req, res) => {
   try {
-    const budget = await _getBudget(req.user._id, req.query.month);
+    const budget = await _getBudget(req.user, req.query.month);
     sendSuccess(res, { budget }, 'Budget fetched successfully');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
@@ -15,7 +15,7 @@ const getBudget = async (req, res) => {
 
 const upsertBudget = async (req, res) => {
   try {
-    const budget = await _upsertBudget(req.body, req.user._id);
+    const budget = await _upsertBudget(req.body, req.user);
     sendSuccess(res, { budget }, 'Budget saved successfully');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
