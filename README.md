@@ -42,6 +42,8 @@ npm run build:be-public
 
 Then deploy/start this backend service.
 
+For a step-by-step Northflank deployment guide, see [NORTHFLANK_DEPLOYMENT.md](./NORTHFLANK_DEPLOYMENT.md).
+
 ## Stack
 
 - Node.js + Express
