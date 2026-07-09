@@ -1,5 +1,6 @@
 const DebtAccount = require('../models/debtAccount');
 const DebtTransaction = require('../models/debtTransaction');
+const mongoose = require('mongoose');
 const { getPaymentMethodById } = require('./paymentMethodService');
 const { normalizeCalendarDate } = require('../utils/dateUtils');
 
@@ -33,6 +34,70 @@ const getDebtTransactions = async (accountId, userId) => {
   return DebtTransaction.find({ debtAccount: accountId, createdBy: userId })
     .populate(transactionPopulate)
     .sort({ date: -1, createdAt: -1 });
+};
+
+const toPositiveInt = (value, fallback, max = 100) => Math.min(Math.max(Number(value) || fallback, 1), max);
+
+const getDebtHistory = async (accountId, userId, options = {}) => {
+  await getDebtAccountById(accountId, userId);
+
+  const page = toPositiveInt(options.page, 1);
+  const limit = toPositiveInt(options.limit, 10);
+  const skip = (page - 1) * limit;
+  const debtAccountId = new mongoose.Types.ObjectId(accountId);
+  const query = { debtAccount: debtAccountId, createdBy: userId };
+
+  if (options.startDate || options.endDate) {
+    query.date = {};
+    if (options.startDate) query.date.$gte = new Date(options.startDate);
+    if (options.endDate) {
+      const endDate = new Date(options.endDate);
+      endDate.setHours(23, 59, 59, 999);
+      query.date.$lte = endDate;
+    }
+  }
+
+  const [transactions, total, summaryRows] = await Promise.all([
+    DebtTransaction.find(query)
+      .populate(transactionPopulate)
+      .sort({ date: -1, createdAt: -1, _id: -1 })
+      .skip(skip)
+      .limit(limit)
+      .lean(),
+    DebtTransaction.countDocuments(query),
+    DebtTransaction.aggregate([
+      { $match: query },
+      {
+        $group: {
+          _id: '$direction',
+          totalAmount: { $sum: '$amount' },
+        },
+      },
+    ]),
+  ]);
+
+  const charges = summaryRows
+    .filter((row) => row._id === 'increase')
+    .reduce((sum, row) => sum + row.totalAmount, 0);
+  const payments = summaryRows
+    .filter((row) => row._id === 'decrease')
+    .reduce((sum, row) => sum + row.totalAmount, 0);
+
+  return {
+    transactions,
+    summary: {
+      charges,
+      payments,
+      net: charges - payments,
+    },
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      hasMore: page * limit < total,
+    },
+  };
 };
 
 const ensurePaymentMethodCanLink = async (paymentMethodId, type, userId) => {
@@ -200,6 +265,7 @@ module.exports = {
   createDebtAccount,
   getDebtAccounts,
   getDebtAccountById,
+  getDebtHistory,
   getDebtTransactions,
   recordDebtTransaction,
   syncExpenseDebtOnCreate,

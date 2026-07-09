@@ -3,6 +3,7 @@ const {
   createDebtAccount: _createDebtAccount,
   getDebtAccounts: _getDebtAccounts,
   getDebtAccountById: _getDebtAccountById,
+  getDebtHistory: _getDebtHistory,
   getDebtTransactions: _getDebtTransactions,
   recordDebtTransaction: _recordDebtTransaction,
 } = require('../services/debtService');
@@ -32,6 +33,15 @@ const getDebtAccountById = async (req, res) => {
       _getDebtTransactions(req.params.id, req.user._id),
     ]);
     sendSuccess(res, { account, transactions }, 'Debt account fetched successfully');
+  } catch (err) {
+    sendError(res, err.message, err.statusCode || 500);
+  }
+};
+
+const getDebtHistory = async (req, res) => {
+  try {
+    const result = await _getDebtHistory(req.params.id, req.user._id, req.query);
+    sendSuccess(res, result, 'Debt history fetched successfully');
   } catch (err) {
     sendError(res, err.message, err.statusCode || 500);
   }
@@ -69,6 +79,7 @@ module.exports = {
   createDebtAccount,
   getDebtAccounts,
   getDebtAccountById,
+  getDebtHistory,
   recordDebtCharge,
   recordDebtPayment,
 };
