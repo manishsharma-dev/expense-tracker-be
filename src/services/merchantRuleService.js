@@ -74,7 +74,25 @@ const getMerchantRuleSuggestions = async (userId, query) => {
     .lean();
 };
 
+const deleteMerchantRule = async (ruleId, userId) => {
+  const rule = await MerchantRule.findOneAndUpdate(
+    { _id: ruleId, createdBy: userId, isDeleted: false },
+    {
+      isDeleted: true,
+      updatedBy: userId,
+    },
+    { new: true }
+  );
+
+  if (!rule) {
+    throw Object.assign(new Error('Merchant suggestion not found'), { statusCode: 404 });
+  }
+
+  return rule;
+};
+
 module.exports = {
+  deleteMerchantRule,
   getMerchantRuleSuggestions,
   normalizeMerchantText,
   upsertMerchantRuleFromExpense,
