@@ -16,8 +16,11 @@ const logger = require('./utils/logger');
 const app = express();
 const publicPath = path.join(__dirname, '..', 'public');
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB outside tests. Supertest imports the app directly and should
+// not require a live database for route validation/unit-style tests.
+if (process.env.NODE_ENV !== 'test') {
+  connectDB();
+}
 
 // Trust Render/proxy headers for req.ip
 app.set('trust proxy', 1);
