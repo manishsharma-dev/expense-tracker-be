@@ -149,9 +149,12 @@ Open these in order:
 
 ```text
 GET https://your-northflank-service-url/api/v1/health
+GET https://your-northflank-service-url/api/v1/health/readiness
 GET https://your-northflank-service-url/api/config
 GET https://your-northflank-service-url/
 ```
+
+Use `/api/v1/health` for the Northflank health check path. Use `/api/v1/health/readiness` manually when debugging dependencies; it reports MongoDB, Redis, email configuration, S3 configuration, and runtime state.
 
 Then test the app:
 

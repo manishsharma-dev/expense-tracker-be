@@ -26,6 +26,7 @@ These thresholds are intentionally low because the project already has a lot of 
 
 Prioritize code that protects money and user data:
 
+- Health/readiness checks for MongoDB, Redis, email, and S3 configuration.
 - Auth OTP request/verify behavior.
 - Cookie auth and CSRF behavior.
 - User ownership checks for expenses, earnings, budgets, payment methods, and debts.
@@ -46,3 +47,12 @@ To block direct merges, enable branch protection in GitHub:
 3. Add a rule for `main`.
 4. Enable `Require status checks to pass before merging`.
 5. Select the `test` check from `BE CI`.
+
+## Health Checks
+
+The API exposes two health routes:
+
+- `GET /api/v1/health` is a cheap liveness check for hosting platforms.
+- `GET /api/v1/health/readiness` checks MongoDB, Redis, email configuration, S3 configuration, and runtime state.
+
+Use the readiness route when debugging production issues. It returns `503` when required dependencies such as MongoDB or Redis are down, and includes a `checks` object with the failing dependency details.
